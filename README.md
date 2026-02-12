@@ -1,2 +1,3 @@
 # vincere
-chat plattform
+
+let us defend and win
