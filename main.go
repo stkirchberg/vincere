@@ -73,22 +73,6 @@ func decrypt(key []byte, hexText string) string {
 func main() {
 	tmpl := template.Must(template.ParseFS(content, "templates/*.html"))
 
-	go func() {
-		for {
-			time.Sleep(1 * time.Minute)
-			mu.Lock()
-			cutoff := time.Now().Add(-12 * time.Hour)
-			var updated []Message
-			for _, m := range chatHistory {
-				if m.Timestamp.After(cutoff) {
-					updated = append(updated, m)
-				}
-			}
-			chatHistory = updated
-			mu.Unlock()
-		}
-	}()
-
 	http.Handle("/static/", http.FileServer(http.FS(content)))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -100,14 +84,22 @@ func main() {
 				currentUser = users[name]
 			}
 		}
+
+		var online []User
+		for _, u := range users {
+			online = append(online, *u)
+		}
+
 		var uname, ucol string
 		if currentUser != nil {
 			uname = currentUser.Username
 			ucol = currentUser.Color
 		}
+
 		tmpl.ExecuteTemplate(w, "index.html", map[string]interface{}{
-			"Username":  uname,
-			"UserColor": ucol,
+			"Username":    uname,
+			"UserColor":   ucol,
+			"OnlineUsers": online,
 		})
 	})
 
@@ -120,8 +112,10 @@ func main() {
 				currentUser = users[name]
 			}
 		}
+
 		processed := make([]Message, len(chatHistory))
 		copy(processed, chatHistory)
+
 		if currentUser != nil {
 			for i, m := range processed {
 				if m.IsEncrypted && m.Target == currentUser.Username {
@@ -133,6 +127,7 @@ func main() {
 				}
 			}
 		}
+
 		tmpl.ExecuteTemplate(w, "messages.html", map[string]interface{}{
 			"Messages": processed,
 			"Username": func() string {
@@ -181,15 +176,10 @@ func main() {
 			http.Redirect(w, r, "/input", http.StatusSeeOther)
 			return
 		}
+
 		text := strings.TrimSpace(r.FormValue("text"))
 		if text != "" {
-			msg := Message{
-				Sender:    senderName,
-				Content:   text,
-				Timestamp: time.Now(),
-				Target:    "all",
-				Color:     sender.Color,
-			}
+			msg := Message{Sender: senderName, Content: text, Timestamp: time.Now(), Target: "all", Color: sender.Color}
 			if strings.HasPrefix(text, "@") {
 				parts := strings.SplitN(text, " ", 2)
 				targetName := strings.TrimPrefix(parts[0], "@")
@@ -207,7 +197,6 @@ func main() {
 			chatHistory = append(chatHistory, msg)
 			mu.Unlock()
 		}
-		// Redirect back to the input frame to clear the field
 		http.Redirect(w, r, "/input", http.StatusSeeOther)
 	})
 
@@ -223,7 +212,6 @@ func main() {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
-	fmt.Println("Vincere Server started successfully.")
-	fmt.Println("Access the messenger here: http://127.0.0.1:8080")
+	fmt.Println("Vincere Server running. Access: http://127.0.0.1:8080")
 	http.ListenAndServe(":8080", nil)
 }

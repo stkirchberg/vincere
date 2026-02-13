@@ -95,3 +95,29 @@ a {
     text-decoration: none;
     margin-left: 10px;
 }
+
+
+.main-layout { 
+    display: flex; 
+    gap: 20px; 
+}
+
+.sidebar { 
+    width: 150px; 
+    border-right: 1px solid #030; 
+    padding: 10px; 
+}
+
+.content { 
+    flex-grow: 1; 
+}
+
+.user-list { 
+    list-style: none; 
+    padding: 0; 
+    font-size: 0.9em; 
+}
+
+.user-list li { 
+    margin-bottom: 5px; 
+}

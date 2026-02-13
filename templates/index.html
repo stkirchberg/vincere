@@ -2,25 +2,183 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="10">
     <link rel="stylesheet" href="/static/style.css">
     <title>vincere</title>
 </head>
-<body style="overflow: hidden;">
+<body>
     <div class="container">
         <h1>vincere</h1>
         {{if .Username}}
-            <iframe src="/messages" width="100%" height="450px" frameborder="0"></iframe>
-            
-            <iframe src="/input" width="100%" height="150px" frameborder="0" scrolling="no"></iframe>
-            
-            <div class="footer">
-                Logged in as: <b style="color: {{.UserColor}};">{{.Username}}</b> | <a href="/logout" target="_parent">Logout</a>
+        <div class="main-layout">
+            <div class="sidebar">
+                <h3>Online</h3>
+                <ul class="user-list">
+                    {{range .OnlineUsers}}
+                    <li style="color: {{.Color}};">● {{.Username}}</li>
+                    {{end}}
+                </ul>
             </div>
+            <div class="content">
+                <iframe src="/messages" width="100%" height="450px" frameborder="0"></iframe>
+                <iframe src="/input" width="100%" height="100px" frameborder="0" scrolling="no"></iframe>
+            </div>
+        </div>
+        <div class="footer">
+            Logged in as: <b style="color: {{.UserColor}};">{{.Username}}</b> | <a href="/logout" target="_parent">Logout</a>
+        </div>
         {{else}}
-            <form action="/login" method="POST" class="login-form">
-                <input type="text" name="username" placeholder="Username" required>
-                <button type="submit">ENTER</button>
-            </form>
+        <form action="/login" method="POST" class="login-form">
+            <input type="text" name="username" placeholder="Username" required>
+            <div class="settings">
+                <label>Theme Color: 
+                    <select name="color">
+                        <option value="AliceBlue" style="color: AliceBlue; background: #000;">AliceBlue</option>
+                        <option value="AntiqueWhite" style="color: AntiqueWhite; background: #000;">AntiqueWhite</option>
+                        <option value="Aqua" style="color: Aqua; background: #000;">Aqua</option>
+                        <option value="Aquamarine" style="color: Aquamarine; background: #000;">Aquamarine</option>
+                        <option value="Azure" style="color: Azure; background: #000;">Azure</option>
+                        <option value="Beige" style="color: Beige; background: #000;">Beige</option>
+                        <option value="Bisque" style="color: Bisque; background: #000;">Bisque</option>
+                        <option value="Black" style="color: Black; background: #000;">Black</option>
+                        <option value="BlanchedAlmond" style="color: BlanchedAlmond; background: #000;">BlanchedAlmond</option>
+                        <option value="Blue" style="color: Blue; background: #000;">Blue</option>
+                        <option value="BlueViolet" style="color: BlueViolet; background: #000;">BlueViolet</option>
+                        <option value="Brown" style="color: Brown; background: #000;">Brown</option>
+                        <option value="BurlyWood" style="color: BurlyWood; background: #000;">BurlyWood</option>
+                        <option value="CadetBlue" style="color: CadetBlue; background: #000;">CadetBlue</option>
+                        <option value="Chartreuse" style="color: Chartreuse; background: #000;">Chartreuse</option>
+                        <option value="Chocolate" style="color: Chocolate; background: #000;">Chocolate</option>
+                        <option value="Coral" style="color: Coral; background: #000;">Coral</option>
+                        <option value="CornflowerBlue" style="color: CornflowerBlue; background: #000;">CornflowerBlue</option>
+                        <option value="Cornsilk" style="color: Cornsilk; background: #000;">Cornsilk</option>
+                        <option value="Crimson" style="color: Crimson; background: #000;">Crimson</option>
+                        <option value="Cyan" style="color: Cyan; background: #000;">Cyan</option>
+                        <option value="DarkBlue" style="color: DarkBlue; background: #000;">DarkBlue</option>
+                        <option value="DarkCyan" style="color: DarkCyan; background: #000;">DarkCyan</option>
+                        <option value="DarkGoldenRod" style="color: DarkGoldenRod; background: #000;">DarkGoldenRod</option>
+                        <option value="DarkGray" style="color: DarkGray; background: #000;">DarkGray</option>
+                        <option value="DarkGreen" style="color: DarkGreen; background: #000;">DarkGreen</option>
+                        <option value="DarkKhaki" style="color: DarkKhaki; background: #000;">DarkKhaki</option>
+                        <option value="DarkMagenta" style="color: DarkMagenta; background: #000;">DarkMagenta</option>
+                        <option value="DarkOliveGreen" style="color: DarkOliveGreen; background: #000;">DarkOliveGreen</option>
+                        <option value="DarkOrange" style="color: DarkOrange; background: #000;">DarkOrange</option>
+                        <option value="DarkOrchid" style="color: DarkOrchid; background: #000;">DarkOrchid</option>
+                        <option value="DarkRed" style="color: DarkRed; background: #000;">DarkRed</option>
+                        <option value="DarkSalmon" style="color: DarkSalmon; background: #000;">DarkSalmon</option>
+                        <option value="DarkSeaGreen" style="color: DarkSeaGreen; background: #000;">DarkSeaGreen</option>
+                        <option value="DarkSlateBlue" style="color: DarkSlateBlue; background: #000;">DarkSlateBlue</option>
+                        <option value="DarkSlateGray" style="color: DarkSlateGray; background: #000;">DarkSlateGray</option>
+                        <option value="DarkTurquoise" style="color: DarkTurquoise; background: #000;">DarkTurquoise</option>
+                        <option value="DarkViolet" style="color: DarkViolet; background: #000;">DarkViolet</option>
+                        <option value="DeepPink" style="color: DeepPink; background: #000;">DeepPink</option>
+                        <option value="DeepSkyBlue" style="color: DeepSkyBlue; background: #000;">DeepSkyBlue</option>
+                        <option value="DimGray" style="color: DimGray; background: #000;">DimGray</option>
+                        <option value="DodgerBlue" style="color: DodgerBlue; background: #000;">DodgerBlue</option>
+                        <option value="FireBrick" style="color: FireBrick; background: #000;">FireBrick</option>
+                        <option value="FloralWhite" style="color: FloralWhite; background: #000;">FloralWhite</option>
+                        <option value="ForestGreen" style="color: ForestGreen; background: #000;">ForestGreen</option>
+                        <option value="Fuchsia" style="color: Fuchsia; background: #000;">Fuchsia</option>
+                        <option value="Gainsboro" style="color: Gainsboro; background: #000;">Gainsboro</option>
+                        <option value="GhostWhite" style="color: GhostWhite; background: #000;">GhostWhite</option>
+                        <option value="Gold" style="color: Gold; background: #000;">Gold</option>
+                        <option value="GoldenRod" style="color: GoldenRod; background: #000;">GoldenRod</option>
+                        <option value="Gray" style="color: Gray; background: #000;">Gray</option>
+                        <option value="Green" style="color: Green; background: #000;">Green</option>
+                        <option value="GreenYellow" style="color: GreenYellow; background: #000;">GreenYellow</option>
+                        <option value="HoneyDew" style="color: HoneyDew; background: #000;">HoneyDew</option>
+                        <option value="HotPink" style="color: HotPink; background: #000;">HotPink</option>
+                        <option value="IndianRed" style="color: IndianRed; background: #000;">IndianRed</option>
+                        <option value="Indigo" style="color: Indigo; background: #000;">Indigo</option>
+                        <option value="Ivory" style="color: Ivory; background: #000;">Ivory</option>
+                        <option value="Khaki" style="color: Khaki; background: #000;">Khaki</option>
+                        <option value="Lavender" style="color: Lavender; background: #000;">Lavender</option>
+                        <option value="LavenderBlush" style="color: LavenderBlush; background: #000;">LavenderBlush</option>
+                        <option value="LawnGreen" style="color: LawnGreen; background: #000;">LawnGreen</option>
+                        <option value="LemonChiffon" style="color: LemonChiffon; background: #000;">LemonChiffon</option>
+                        <option value="LightBlue" style="color: LightBlue; background: #000;">LightBlue</option>
+                        <option value="LightCoral" style="color: LightCoral; background: #000;">LightCoral</option>
+                        <option value="LightCyan" style="color: LightCyan; background: #000;">LightCyan</option>
+                        <option value="LightGoldenRodYellow" style="color: LightGoldenRodYellow; background: #000;">LightGoldenRodYellow</option>
+                        <option value="LightGray" style="color: LightGray; background: #000;">LightGray</option>
+                        <option value="LightGreen" style="color: LightGreen; background: #000;">LightGreen</option>
+                        <option value="LightPink" style="color: LightPink; background: #000;">LightPink</option>
+                        <option value="LightSalmon" style="color: LightSalmon; background: #000;">LightSalmon</option>
+                        <option value="LightSeaGreen" style="color: LightSeaGreen; background: #000;">LightSeaGreen</option>
+                        <option value="LightSkyBlue" style="color: LightSkyBlue; background: #000;">LightSkyBlue</option>
+                        <option value="LightSlateGray" style="color: LightSlateGray; background: #000;">LightSlateGray</option>
+                        <option value="LightSteelBlue" style="color: LightSteelBlue; background: #000;">LightSteelBlue</option>
+                        <option value="LightYellow" style="color: LightYellow; background: #000;">LightYellow</option>
+                        <option value="Lime" style="color: Lime; background: #000;" selected>Lime</option>
+                        <option value="LimeGreen" style="color: LimeGreen; background: #000;">LimeGreen</option>
+                        <option value="Linen" style="color: Linen; background: #000;">Linen</option>
+                        <option value="Magenta" style="color: Magenta; background: #000;">Magenta</option>
+                        <option value="Maroon" style="color: Maroon; background: #000;">Maroon</option>
+                        <option value="MediumAquaMarine" style="color: MediumAquaMarine; background: #000;">MediumAquaMarine</option>
+                        <option value="MediumBlue" style="color: MediumBlue; background: #000;">MediumBlue</option>
+                        <option value="MediumOrchid" style="color: MediumOrchid; background: #000;">MediumOrchid</option>
+                        <option value="MediumPurple" style="color: MediumPurple; background: #000;">MediumPurple</option>
+                        <option value="MediumSeaGreen" style="color: MediumSeaGreen; background: #000;">MediumSeaGreen</option>
+                        <option value="MediumSlateBlue" style="color: MediumSlateBlue; background: #000;">MediumSlateBlue</option>
+                        <option value="MediumSpringGreen" style="color: MediumSpringGreen; background: #000;">MediumSpringGreen</option>
+                        <option value="MediumTurquoise" style="color: MediumTurquoise; background: #000;">MediumTurquoise</option>
+                        <option value="MediumVioletRed" style="color: MediumVioletRed; background: #000;">MediumVioletRed</option>
+                        <option value="MidnightBlue" style="color: MidnightBlue; background: #000;">MidnightBlue</option>
+                        <option value="MintCream" style="color: MintCream; background: #000;">MintCream</option>
+                        <option value="MistyRose" style="color: MistyRose; background: #000;">MistyRose</option>
+                        <option value="Moccasin" style="color: Moccasin; background: #000;">Moccasin</option>
+                        <option value="NavajoWhite" style="color: NavajoWhite; background: #000;">NavajoWhite</option>
+                        <option value="Navy" style="color: Navy; background: #000;">Navy</option>
+                        <option value="OldLace" style="color: OldLace; background: #000;">OldLace</option>
+                        <option value="Olive" style="color: Olive; background: #000;">Olive</option>
+                        <option value="OliveDrab" style="color: OliveDrab; background: #000;">OliveDrab</option>
+                        <option value="Orange" style="color: Orange; background: #000;">Orange</option>
+                        <option value="OrangeRed" style="color: OrangeRed; background: #000;">OrangeRed</option>
+                        <option value="Orchid" style="color: Orchid; background: #000;">Orchid</option>
+                        <option value="PaleGoldenRod" style="color: PaleGoldenRod; background: #000;">PaleGoldenRod</option>
+                        <option value="PaleGreen" style="color: PaleGreen; background: #000;">PaleGreen</option>
+                        <option value="PaleTurquoise" style="color: PaleTurquoise; background: #000;">PaleTurquoise</option>
+                        <option value="PaleVioletRed" style="color: PaleVioletRed; background: #000;">PaleVioletRed</option>
+                        <option value="PapayaWhip" style="color: PapayaWhip; background: #000;">PapayaWhip</option>
+                        <option value="PeachPuff" style="color: PeachPuff; background: #000;">PeachPuff</option>
+                        <option value="Peru" style="color: Peru; background: #000;">Peru</option>
+                        <option value="Pink" style="color: Pink; background: #000;">Pink</option>
+                        <option value="Plum" style="color: Plum; background: #000;">Plum</option>
+                        <option value="PowderBlue" style="color: PowderBlue; background: #000;">PowderBlue</option>
+                        <option value="Purple" style="color: Purple; background: #000;">Purple</option>
+                        <option value="RebeccaPurple" style="color: RebeccaPurple; background: #000;">RebeccaPurple</option>
+                        <option value="Red" style="color: Red; background: #000;">Red</option>
+                        <option value="RosyBrown" style="color: RosyBrown; background: #000;">RosyBrown</option>
+                        <option value="RoyalBlue" style="color: RoyalBlue; background: #000;">RoyalBlue</option>
+                        <option value="SaddleBrown" style="color: SaddleBrown; background: #000;">SaddleBrown</option>
+                        <option value="Salmon" style="color: Salmon; background: #000;">Salmon</option>
+                        <option value="SandyBrown" style="color: SandyBrown; background: #000;">SandyBrown</option>
+                        <option value="SeaGreen" style="color: SeaGreen; background: #000;">SeaGreen</option>
+                        <option value="SeaShell" style="color: SeaShell; background: #000;">SeaShell</option>
+                        <option value="Sienna" style="color: Sienna; background: #000;">Sienna</option>
+                        <option value="Silver" style="color: Silver; background: #000;">Silver</option>
+                        <option value="SkyBlue" style="color: SkyBlue; background: #000;">SkyBlue</option>
+                        <option value="SlateBlue" style="color: SlateBlue; background: #000;">SlateBlue</option>
+                        <option value="SlateGray" style="color: SlateGray; background: #000;">SlateGray</option>
+                        <option value="Snow" style="color: Snow; background: #000;">Snow</option>
+                        <option value="SpringGreen" style="color: SpringGreen; background: #000;">SpringGreen</option>
+                        <option value="SteelBlue" style="color: SteelBlue; background: #000;">SteelBlue</option>
+                        <option value="Tan" style="color: Tan; background: #000;">Tan</option>
+                        <option value="Teal" style="color: Teal; background: #000;">Teal</option>
+                        <option value="Thistle" style="color: Thistle; background: #000;">Thistle</option>
+                        <option value="Tomato" style="color: Tomato; background: #000;">Tomato</option>
+                        <option value="Turquoise" style="color: Turquoise; background: #000;">Turquoise</option>
+                        <option value="Violet" style="color: Violet; background: #000;">Violet</option>
+                        <option value="Wheat" style="color: Wheat; background: #000;">Wheat</option>
+                        <option value="White" style="color: White; background: #000;">White</option>
+                        <option value="WhiteSmoke" style="color: WhiteSmoke; background: #000;">WhiteSmoke</option>
+                        <option value="Yellow" style="color: Yellow; background: #000;">Yellow</option>
+                        <option value="YellowGreen" style="color: YellowGreen; background: #000;">YellowGreen</option>
+                    </select>
+                </label>
+            </div>
+            <button type="submit">ENTER</button>
+        </form>
         {{end}}
     </div>
 </body>
