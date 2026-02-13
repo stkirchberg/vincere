@@ -13,8 +13,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"golang.org/x/crypto/curve25519"
 )
 
 //go:embed templates/* static/*
@@ -43,7 +41,7 @@ var (
 	mu          sync.Mutex
 )
 
-// --- CRYPTO HELPERS ---
+// --- CRYPTO HELPERS (AES standard) ---
 func encrypt(key []byte, text string) string {
 	block, _ := aes.NewCipher(key)
 	gcm, _ := cipher.NewGCM(block)
@@ -74,6 +72,7 @@ func decrypt(key []byte, hexText string) string {
 func main() {
 	tmpl := template.Must(template.ParseFS(content, "templates/*.html"))
 
+	// Cleanup-Routine
 	go func() {
 		for {
 			time.Sleep(1 * time.Minute)
@@ -138,13 +137,14 @@ func main() {
 		}
 		processed := make([]Message, len(chatHistory))
 		copy(processed, chatHistory)
+
 		if currentUser != nil {
 			for i, m := range processed {
 				if m.IsEncrypted && m.Target == currentUser.Username {
 					sender, exist := users[m.Sender]
 					if exist {
-						shared, _ := curve25519.X25519(currentUser.PrivKey[:], sender.PubKey[:])
-						processed[i].Content = decrypt(shared, m.Content)
+						shared := X25519(currentUser.PrivKey, sender.PubKey)
+						processed[i].Content = decrypt(shared[:], m.Content)
 					}
 				}
 			}
@@ -170,16 +170,19 @@ func main() {
 		name := strings.TrimSpace(r.FormValue("username"))
 		color := r.FormValue("color")
 		if name != "" {
-			var priv [32]byte
-			rand.Read(priv[:])
-			pub, _ := curve25519.X25519(priv[:], curve25519.Basepoint)
-			var pubArr [32]byte
-			copy(pubArr[:], pub)
+			priv, pub := GenerateKeyPair()
+
 			mu.Lock()
-			users[name] = &User{Username: name, PrivKey: priv, PubKey: pubArr, Color: color}
-			sid := fmt.Sprintf("%x", priv[:16])
+			users[name] = &User{
+				Username: name,
+				PrivKey:  priv,
+				PubKey:   pub,
+				Color:    color,
+			}
+			sid := hex.EncodeToString(priv[:16])
 			sessions[sid] = name
 			mu.Unlock()
+
 			http.SetCookie(w, &http.Cookie{Name: "session_id", Value: sid, Path: "/", HttpOnly: true})
 		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -204,19 +207,23 @@ func main() {
 		text := strings.TrimSpace(r.FormValue("text"))
 		if text != "" {
 			msg := Message{Sender: senderName, Content: text, Timestamp: time.Now(), Target: "all", Color: sender.Color}
+
 			if strings.HasPrefix(text, "@") {
 				parts := strings.SplitN(text, " ", 2)
 				targetName := strings.TrimPrefix(parts[0], "@")
+
 				mu.Lock()
 				target, exists := users[targetName]
 				mu.Unlock()
+
 				if exists && len(parts) > 1 {
-					shared, _ := curve25519.X25519(sender.PrivKey[:], target.PubKey[:])
-					msg.Content = encrypt(shared, parts[1])
+					shared := X25519(sender.PrivKey, target.PubKey)
+					msg.Content = encrypt(shared[:], parts[1])
 					msg.Target = targetName
 					msg.IsEncrypted = true
 				}
 			}
+
 			mu.Lock()
 			chatHistory = append(chatHistory, msg)
 			mu.Unlock()
@@ -237,7 +244,7 @@ func main() {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
-	fmt.Println("Vincere Messenger ready on Arch Linux.")
-	fmt.Println("Open: http://127.0.0.1:8080")
+	fmt.Println("Vincere Messenger running (All-In-House Crypto).")
+	fmt.Println("Address: http://127.0.0.1:8080")
 	http.ListenAndServe(":8080", nil)
 }
