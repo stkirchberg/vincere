@@ -21,9 +21,11 @@ import (
 var content embed.FS
 
 type User struct {
-	Username string
-	PrivKey  [32]byte
-	PubKey   [32]byte
+	Username  string
+	PrivKey   [32]byte
+	PubKey    [32]byte
+	NameColor string
+	ChatColor string
 }
 
 type Message struct {
@@ -32,6 +34,8 @@ type Message struct {
 	Content     string
 	Timestamp   time.Time
 	IsEncrypted bool
+	NameColor   string
+	ChatColor   string
 }
 
 var (
@@ -52,13 +56,13 @@ func encrypt(key []byte, text string) string {
 func decrypt(key []byte, hexText string) string {
 	data, err := hex.DecodeString(hexText)
 	if err != nil {
-		return "[Error Decrypting]"
+		return "[Error]"
 	}
 	block, _ := aes.NewCipher(key)
 	gcm, _ := cipher.NewGCM(block)
 	nonceSize := gcm.NonceSize()
 	if len(data) < nonceSize {
-		return "[Invalid Ciphertext]"
+		return "[Error]"
 	}
 	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
@@ -73,7 +77,7 @@ func main() {
 
 	go func() {
 		for {
-			time.Sleep(5 * time.Minute)
+			time.Sleep(1 * time.Minute)
 			mu.Lock()
 			cutoff := time.Now().Add(-12 * time.Hour)
 			var updated []Message
@@ -93,44 +97,55 @@ func main() {
 		mu.Lock()
 		defer mu.Unlock()
 
-		var currentUser string
+		var currentUser *User
 		if cookie, err := r.Cookie("session_id"); err == nil {
-			currentUser = sessions[cookie.Value]
+			if name, ok := sessions[cookie.Value]; ok {
+				currentUser = users[name]
+			}
 		}
 
-		processedMessages := make([]Message, len(chatHistory))
-		copy(processedMessages, chatHistory)
+		processed := make([]Message, len(chatHistory))
+		copy(processed, chatHistory)
 
-		if user, ok := users[currentUser]; ok {
-			for i, m := range processedMessages {
-				if m.IsEncrypted && m.Target == user.Username {
+		if currentUser != nil {
+			for i, m := range processed {
+				if m.IsEncrypted && m.Target == currentUser.Username {
 					sender, exist := users[m.Sender]
 					if exist {
-						shared, _ := curve25519.X25519(user.PrivKey[:], sender.PubKey[:])
-						processedMessages[i].Content = decrypt(shared, m.Content)
+						shared, _ := curve25519.X25519(currentUser.PrivKey[:], sender.PubKey[:])
+						processed[i].Content = decrypt(shared, m.Content)
 					}
 				}
 			}
 		}
 
+		var uname, ucol string
+		if currentUser != nil {
+			uname = currentUser.Username
+			ucol = currentUser.NameColor
+		}
+
 		tmpl.Execute(w, map[string]interface{}{
-			"Messages": processedMessages,
-			"Username": currentUser,
+			"Messages":  processed,
+			"Username":  uname,
+			"UserColor": ucol,
 		})
 	})
 
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimSpace(r.FormValue("username"))
+		nCol := r.FormValue("name_color")
+		cCol := r.FormValue("chat_color")
+
 		if name != "" {
 			var priv [32]byte
 			rand.Read(priv[:])
 			pub, _ := curve25519.X25519(priv[:], curve25519.Basepoint)
-
 			var pubArr [32]byte
 			copy(pubArr[:], pub)
 
 			mu.Lock()
-			users[name] = &User{Username: name, PrivKey: priv, PubKey: pubArr}
+			users[name] = &User{Username: name, PrivKey: priv, PubKey: pubArr, NameColor: nCol, ChatColor: cCol}
 			sid := fmt.Sprintf("%x", priv[:16])
 			sessions[sid] = name
 			mu.Unlock()
@@ -149,31 +164,37 @@ func main() {
 
 		mu.Lock()
 		senderName := sessions[cookie.Value]
-		sender, userExists := users[senderName]
+		sender, ok := users[senderName]
 		mu.Unlock()
 
-		if !userExists {
+		if !ok {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 
-		text := r.FormValue("text")
+		text := strings.TrimSpace(r.FormValue("text"))
 		if text == "" {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 
-		msg := Message{Sender: senderName, Content: text, Timestamp: time.Now(), Target: "all"}
+		msg := Message{
+			Sender:    senderName,
+			Content:   text,
+			Timestamp: time.Now(),
+			Target:    "all",
+			NameColor: sender.NameColor,
+			ChatColor: sender.ChatColor,
+		}
 
 		if strings.HasPrefix(text, "@") {
 			parts := strings.SplitN(text, " ", 2)
 			targetName := strings.TrimPrefix(parts[0], "@")
-
 			mu.Lock()
-			target, targetExists := users[targetName]
+			target, exists := users[targetName]
 			mu.Unlock()
 
-			if targetExists && len(parts) > 1 {
+			if exists && len(parts) > 1 {
 				shared, _ := curve25519.X25519(sender.PrivKey[:], target.PubKey[:])
 				msg.Content = encrypt(shared, parts[1])
 				msg.Target = targetName
@@ -190,15 +211,14 @@ func main() {
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
 		if cookie, err := r.Cookie("session_id"); err == nil {
 			mu.Lock()
-			username := sessions[cookie.Value]
+			name := sessions[cookie.Value]
 			delete(sessions, cookie.Value)
-			delete(users, username)
+			delete(users, name)
 			mu.Unlock()
 		}
 		http.SetCookie(w, &http.Cookie{Name: "session_id", Value: "", Path: "/", MaxAge: -1})
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
-	fmt.Println("Vincere Server running on http://127.0.0.1:8080")
 	http.ListenAndServe(":8080", nil)
 }

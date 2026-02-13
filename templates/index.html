@@ -12,15 +12,14 @@
         {{if .Username}}
         <div class="chat-box">
             {{range .Messages}}
-            <div class="message">
+            <div class="message" style="border-left-color: {{.NameColor}};">
                 <span class="time">[{{.Timestamp.Format "15:04"}}]</span>
-                <span class="user">{{.Sender}}:</span>
-                <span class="text {{if .IsEncrypted}}encrypted{{end}}">
+                <span class="user" style="color: {{.NameColor}};">{{.Sender}}:</span>
+                <span class="text" style="color: {{.ChatColor}};">
                     {{if .IsEncrypted}}
-                        {{if eq .Target $.Username}} {{.Content}} {{else}} [Encrypted Message] {{end}}
+                        {{if eq .Target $.Username}} {{.Content}} {{else}} <span class="enc-label">[Encrypted Message]</span> {{end}}
                     {{else}}
                         {{.Content}}
-                    {{if eq .Target "all"}}{{else if eq .Target $.Username}}{{else}} [Sent to @{{.Target}}] {{end}}
                     {{end}}
                 </span>
             </div>
@@ -31,11 +30,15 @@
             <button type="submit">SEND</button>
         </form>
         <div class="footer">
-            Logged in as: <b>{{.Username}}</b> | <a href="/logout">Logout</a>
+            Logged in as: <b style="color: {{.UserColor}};">{{.Username}}</b> | <a href="/logout">Logout</a>
         </div>
         {{else}}
         <form action="/login" method="POST" class="login-form">
-            <input type="text" name="username" placeholder="Choose Username" required>
+            <input type="text" name="username" placeholder="Username" required>
+            <div class="settings">
+                <label>Name: <input type="color" name="name_color" value="#00ff00"></label>
+                <label>Text: <input type="color" name="chat_color" value="#ffffff"></label>
+            </div>
             <button type="submit">ENTER</button>
         </form>
         {{end}}
