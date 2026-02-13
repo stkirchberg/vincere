@@ -4,6 +4,7 @@ body {
     font-family: 'Courier New', monospace;
     padding: 20px;
     line-height: 1.2;
+    overflow-x: hidden;
 }
 
 .container {
@@ -18,18 +19,25 @@ h1 {
 }
 
 .chat-box {
-    border: 1px solid #0f0;
-    height: 550px;
+    height: 100%;
     overflow-y: scroll;
     padding: 15px;
-    margin-bottom: 20px;
     background-color: #050505;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.chat-box::-webkit-scrollbar {
+    display: none;
 }
 
 .message {
     margin-bottom: 12px;
     border-left: 4px solid #333;
     padding-left: 12px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-all;
 }
 
 .time {
@@ -40,6 +48,12 @@ h1 {
 .user {
     font-weight: bold;
     margin-right: 8px;
+}
+
+.text {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-all;
 }
 
 .enc-label {
@@ -96,7 +110,6 @@ a {
     margin-left: 10px;
 }
 
-
 .main-layout { 
     display: flex; 
     gap: 20px; 
@@ -120,4 +133,13 @@ a {
 
 .user-list li { 
     margin-bottom: 5px; 
+}
+
+iframe {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+iframe::-webkit-scrollbar {
+    display: none;
 }
