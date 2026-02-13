@@ -71,7 +71,7 @@ func decrypt(key []byte, hexText string) string {
 }
 
 func main() {
-	tmpl := template.Must(template.ParseFS(content, "templates/index.html"))
+	tmpl := template.Must(template.ParseFS(content, "templates/*.html"))
 
 	go func() {
 		for {
@@ -94,17 +94,34 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
-
 		var currentUser *User
 		if cookie, err := r.Cookie("session_id"); err == nil {
 			if name, ok := sessions[cookie.Value]; ok {
 				currentUser = users[name]
 			}
 		}
+		var uname, ucol string
+		if currentUser != nil {
+			uname = currentUser.Username
+			ucol = currentUser.Color
+		}
+		tmpl.ExecuteTemplate(w, "index.html", map[string]interface{}{
+			"Username":  uname,
+			"UserColor": ucol,
+		})
+	})
 
+	http.HandleFunc("/messages", func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		var currentUser *User
+		if cookie, err := r.Cookie("session_id"); err == nil {
+			if name, ok := sessions[cookie.Value]; ok {
+				currentUser = users[name]
+			}
+		}
 		processed := make([]Message, len(chatHistory))
 		copy(processed, chatHistory)
-
 		if currentUser != nil {
 			for i, m := range processed {
 				if m.IsEncrypted && m.Target == currentUser.Username {
@@ -116,37 +133,35 @@ func main() {
 				}
 			}
 		}
-
-		var uname, ucol string
-		if currentUser != nil {
-			uname = currentUser.Username
-			ucol = currentUser.Color
-		}
-
-		tmpl.Execute(w, map[string]interface{}{
-			"Messages":  processed,
-			"Username":  uname,
-			"UserColor": ucol,
+		tmpl.ExecuteTemplate(w, "messages.html", map[string]interface{}{
+			"Messages": processed,
+			"Username": func() string {
+				if currentUser != nil {
+					return currentUser.Username
+				}
+				return ""
+			}(),
 		})
+	})
+
+	http.HandleFunc("/input", func(w http.ResponseWriter, r *http.Request) {
+		tmpl.ExecuteTemplate(w, "input.html", nil)
 	})
 
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimSpace(r.FormValue("username"))
 		color := r.FormValue("color")
-
 		if name != "" {
 			var priv [32]byte
 			rand.Read(priv[:])
 			pub, _ := curve25519.X25519(priv[:], curve25519.Basepoint)
 			var pubArr [32]byte
 			copy(pubArr[:], pub)
-
 			mu.Lock()
 			users[name] = &User{Username: name, PrivKey: priv, PubKey: pubArr, Color: color}
 			sid := fmt.Sprintf("%x", priv[:16])
 			sessions[sid] = name
 			mu.Unlock()
-
 			http.SetCookie(w, &http.Cookie{Name: "session_id", Value: sid, Path: "/", HttpOnly: true})
 		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -155,53 +170,45 @@ func main() {
 	http.HandleFunc("/send", func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_id")
 		if err != nil {
-			http.Redirect(w, r, "/", http.StatusSeeOther)
+			http.Redirect(w, r, "/input", http.StatusSeeOther)
 			return
 		}
-
 		mu.Lock()
 		senderName := sessions[cookie.Value]
 		sender, ok := users[senderName]
 		mu.Unlock()
-
 		if !ok {
-			http.Redirect(w, r, "/", http.StatusSeeOther)
+			http.Redirect(w, r, "/input", http.StatusSeeOther)
 			return
 		}
-
 		text := strings.TrimSpace(r.FormValue("text"))
-		if text == "" {
-			http.Redirect(w, r, "/", http.StatusSeeOther)
-			return
-		}
-
-		msg := Message{
-			Sender:    senderName,
-			Content:   text,
-			Timestamp: time.Now(),
-			Target:    "all",
-			Color:     sender.Color,
-		}
-
-		if strings.HasPrefix(text, "@") {
-			parts := strings.SplitN(text, " ", 2)
-			targetName := strings.TrimPrefix(parts[0], "@")
-			mu.Lock()
-			target, exists := users[targetName]
-			mu.Unlock()
-
-			if exists && len(parts) > 1 {
-				shared, _ := curve25519.X25519(sender.PrivKey[:], target.PubKey[:])
-				msg.Content = encrypt(shared, parts[1])
-				msg.Target = targetName
-				msg.IsEncrypted = true
+		if text != "" {
+			msg := Message{
+				Sender:    senderName,
+				Content:   text,
+				Timestamp: time.Now(),
+				Target:    "all",
+				Color:     sender.Color,
 			}
+			if strings.HasPrefix(text, "@") {
+				parts := strings.SplitN(text, " ", 2)
+				targetName := strings.TrimPrefix(parts[0], "@")
+				mu.Lock()
+				target, exists := users[targetName]
+				mu.Unlock()
+				if exists && len(parts) > 1 {
+					shared, _ := curve25519.X25519(sender.PrivKey[:], target.PubKey[:])
+					msg.Content = encrypt(shared, parts[1])
+					msg.Target = targetName
+					msg.IsEncrypted = true
+				}
+			}
+			mu.Lock()
+			chatHistory = append(chatHistory, msg)
+			mu.Unlock()
 		}
-
-		mu.Lock()
-		chatHistory = append(chatHistory, msg)
-		mu.Unlock()
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		// Redirect back to the input frame to clear the field
+		http.Redirect(w, r, "/input", http.StatusSeeOther)
 	})
 
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
@@ -216,5 +223,7 @@ func main() {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
+	fmt.Println("Vincere Server started successfully.")
+	fmt.Println("Access the messenger here: http://127.0.0.1:8080")
 	http.ListenAndServe(":8080", nil)
 }

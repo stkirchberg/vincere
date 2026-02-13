@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="refresh" content="5">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="frame-body">
+    <div class="chat-box" style="height: auto; border: none;">
+        {{range .Messages}}
+        <div class="message" style="border-left-color: {{.Color}};">
+            <span class="time">[{{.Timestamp.Format "15:04"}}]</span>
+            <span class="user" style="color: {{.Color}};">{{.Sender}}:</span>
+            <span class="text" style="color: {{.Color}};">{{.Content}}</span>
+        </div>
+        {{end}}
+    </div>
+</body>
+</html>
