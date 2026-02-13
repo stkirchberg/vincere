@@ -21,11 +21,10 @@ import (
 var content embed.FS
 
 type User struct {
-	Username  string
-	PrivKey   [32]byte
-	PubKey    [32]byte
-	NameColor string
-	ChatColor string
+	Username string
+	PrivKey  [32]byte
+	PubKey   [32]byte
+	Color    string
 }
 
 type Message struct {
@@ -34,8 +33,7 @@ type Message struct {
 	Content     string
 	Timestamp   time.Time
 	IsEncrypted bool
-	NameColor   string
-	ChatColor   string
+	Color       string
 }
 
 var (
@@ -122,7 +120,7 @@ func main() {
 		var uname, ucol string
 		if currentUser != nil {
 			uname = currentUser.Username
-			ucol = currentUser.NameColor
+			ucol = currentUser.Color
 		}
 
 		tmpl.Execute(w, map[string]interface{}{
@@ -134,8 +132,7 @@ func main() {
 
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimSpace(r.FormValue("username"))
-		nCol := r.FormValue("name_color")
-		cCol := r.FormValue("chat_color")
+		color := r.FormValue("color")
 
 		if name != "" {
 			var priv [32]byte
@@ -145,7 +142,7 @@ func main() {
 			copy(pubArr[:], pub)
 
 			mu.Lock()
-			users[name] = &User{Username: name, PrivKey: priv, PubKey: pubArr, NameColor: nCol, ChatColor: cCol}
+			users[name] = &User{Username: name, PrivKey: priv, PubKey: pubArr, Color: color}
 			sid := fmt.Sprintf("%x", priv[:16])
 			sessions[sid] = name
 			mu.Unlock()
@@ -183,8 +180,7 @@ func main() {
 			Content:   text,
 			Timestamp: time.Now(),
 			Target:    "all",
-			NameColor: sender.NameColor,
-			ChatColor: sender.ChatColor,
+			Color:     sender.Color,
 		}
 
 		if strings.HasPrefix(text, "@") {

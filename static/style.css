@@ -1,5 +1,5 @@
 body {
-    background: #000;
+    background-color: #000;
     color: #0f0;
     font-family: 'Courier New', monospace;
     padding: 20px;
@@ -23,7 +23,7 @@ h1 {
     overflow-y: scroll;
     padding: 15px;
     margin-bottom: 20px;
-    background: #050505;
+    background-color: #050505;
 }
 
 .message {
@@ -50,37 +50,27 @@ h1 {
 
 .settings {
     margin: 15px 0;
-    display: flex;
-    gap: 20px;
 }
 
-.settings label {
-    font-size: 0.8em;
+select {
+    background: #000;
+    color: #0f0;
+    border: 1px solid #0f0;
+    padding: 5px;
+    font-family: monospace;
 }
 
 input[type="text"] {
     background: #000;
     border: 1px solid #0f0;
-    color: #0f0;
+    color: #fff;
     padding: 12px;
     outline: none;
-}
-
-.msg-form input {
     width: 80%;
 }
 
-input[type="color"] {
-    background: none;
-    border: 1px solid #333;
-    cursor: pointer;
-    vertical-align: middle;
-    width: 25px;
-    height: 20px;
-}
-
 button {
-    background: #0f0;
+    background-color: #0f0;
     color: #000;
     border: none;
     padding: 12px 25px;
@@ -90,7 +80,7 @@ button {
 }
 
 button:hover {
-    background: #fff;
+    background-color: #fff;
 }
 
 .footer {
