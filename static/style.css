@@ -1,0 +1,14 @@
+body { background: #000; color: #0f0; font-family: 'Courier New', monospace; padding: 20px; }
+.container { max-width: 800px; margin: auto; }
+h1 { border-bottom: 2px solid #0f0; padding-bottom: 10px; }
+.chat-box { border: 1px solid #0f0; height: 500px; overflow-y: scroll; padding: 15px; margin-bottom: 20px; background: #050505; }
+.message { margin-bottom: 10px; line-height: 1.4; border-left: 3px solid #030; padding-left: 10px; }
+.time { color: #080; font-size: 0.85em; }
+.user { font-weight: bold; color: #fff; margin-right: 5px; }
+.encrypted { color: #f0f; }
+.msg-form input { background: #000; border: 1px solid #0f0; color: #0f0; padding: 10px; width: 80%; }
+.login-form input { background: #000; border: 1px solid #0f0; color: #0f0; padding: 10px; }
+button { background: #0f0; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+button:hover { background: #fff; }
+.footer { margin-top: 20px; font-size: 0.9em; border-top: 1px solid #030; padding-top: 10px; }
+a { color: #0f0; text-decoration: none; border: 1px solid #0f0; padding: 2px 5px; font-size: 0.8em; }

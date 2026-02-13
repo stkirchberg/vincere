@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="10">
+    <link rel="stylesheet" href="/static/style.css">
+    <title>Vincere Messenger</title>
+</head>
+<body>
+    <div class="container">
+        <h1>VINCERE</h1>
+        {{if .Username}}
+        <div class="chat-box">
+            {{range .Messages}}
+            <div class="message">
+                <span class="time">[{{.Timestamp.Format "15:04"}}]</span>
+                <span class="user">{{.Sender}}:</span>
+                <span class="text {{if .IsEncrypted}}encrypted{{end}}">
+                    {{if .IsEncrypted}}
+                        {{if eq .Target $.Username}} {{.Content}} {{else}} [Encrypted Message] {{end}}
+                    {{else}}
+                        {{.Content}}
+                    {{if eq .Target "all"}}{{else if eq .Target $.Username}}{{else}} [Sent to @{{.Target}}] {{end}}
+                    {{end}}
+                </span>
+            </div>
+            {{end}}
+        </div>
+        <form action="/send" method="POST" class="msg-form">
+            <input type="text" name="text" placeholder="Message or @User" autofocus autocomplete="off">
+            <button type="submit">SEND</button>
+        </form>
+        <div class="footer">
+            Logged in as: <b>{{.Username}}</b> | <a href="/logout">Logout</a>
+        </div>
+        {{else}}
+        <form action="/login" method="POST" class="login-form">
+            <input type="text" name="username" placeholder="Choose Username" required>
+            <button type="submit">ENTER</button>
+        </form>
+        {{end}}
+    </div>
+</body>
+</html>

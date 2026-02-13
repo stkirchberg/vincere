@@ -1,0 +1,16 @@
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+*.test
+
+vincere
+main
+
+.vscode/
+
+go.work
+
+/var/lib/tor/
