@@ -73,8 +73,26 @@ func decrypt(key []byte, hexText string) string {
 func main() {
 	tmpl := template.Must(template.ParseFS(content, "templates/*.html"))
 
+	// delete messages
+	go func() {
+		for {
+			time.Sleep(5 * time.Minute)
+			mu.Lock()
+			cutoff := time.Now().Add(-12 * time.Hour)
+			var updated []Message
+			for _, m := range chatHistory {
+				if m.Timestamp.After(cutoff) {
+					updated = append(updated, m)
+				}
+			}
+			chatHistory = updated
+			mu.Unlock()
+		}
+	}()
+
 	http.Handle("/static/", http.FileServer(http.FS(content)))
 
+	// 1. INDEX
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -103,6 +121,7 @@ func main() {
 		})
 	})
 
+	// 2. MESSAGES
 	http.HandleFunc("/messages", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -130,19 +149,15 @@ func main() {
 
 		tmpl.ExecuteTemplate(w, "messages.html", map[string]interface{}{
 			"Messages": processed,
-			"Username": func() string {
-				if currentUser != nil {
-					return currentUser.Username
-				}
-				return ""
-			}(),
 		})
 	})
 
+	// 3. INPUT-FRAME (input.html)
 	http.HandleFunc("/input", func(w http.ResponseWriter, r *http.Request) {
 		tmpl.ExecuteTemplate(w, "input.html", nil)
 	})
 
+	// LOGIN
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimSpace(r.FormValue("username"))
 		color := r.FormValue("color")
@@ -162,6 +177,7 @@ func main() {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
+	// SEND
 	http.HandleFunc("/send", func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_id")
 		if err != nil {
@@ -200,6 +216,7 @@ func main() {
 		http.Redirect(w, r, "/input", http.StatusSeeOther)
 	})
 
+	// LOGOUT
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
 		if cookie, err := r.Cookie("session_id"); err == nil {
 			mu.Lock()
@@ -212,6 +229,7 @@ func main() {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
-	fmt.Println("Vincere Server running. Access: http://127.0.0.1:8080")
+	fmt.Println("Vincere Server running auf Arch Linux.")
+	fmt.Println("Link: http://127.0.0.1:8080")
 	http.ListenAndServe(":8080", nil)
 }
