@@ -76,7 +76,7 @@ func main() {
 
 	go func() {
 		for {
-			time.Sleep(5 * time.Minute)
+			time.Sleep(1 * time.Minute)
 			mu.Lock()
 			cutoff := time.Now().Add(-12 * time.Hour)
 			var updated []Message
