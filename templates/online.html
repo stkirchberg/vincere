@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="refresh" content="15">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body style="background: transparent; color: #0f0; font-family: monospace;">
+    <h3>Online</h3>
+    <ul style="list-style: none; padding: 0;">
+        {{range .OnlineUsers}}
+        <li style="color: {{.Color}};">● {{.Username}}</li>
+        {{end}}
+    </ul>
+</body>
+</html>

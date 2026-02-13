@@ -43,6 +43,7 @@ var (
 	mu          sync.Mutex
 )
 
+// --- CRYPTO HELPERS ---
 func encrypt(key []byte, text string) string {
 	block, _ := aes.NewCipher(key)
 	gcm, _ := cipher.NewGCM(block)
@@ -73,7 +74,6 @@ func decrypt(key []byte, hexText string) string {
 func main() {
 	tmpl := template.Must(template.ParseFS(content, "templates/*.html"))
 
-	// delete messages
 	go func() {
 		for {
 			time.Sleep(5 * time.Minute)
@@ -102,26 +102,31 @@ func main() {
 				currentUser = users[name]
 			}
 		}
-
-		var online []User
-		for _, u := range users {
-			online = append(online, *u)
-		}
-
 		var uname, ucol string
 		if currentUser != nil {
 			uname = currentUser.Username
 			ucol = currentUser.Color
 		}
-
 		tmpl.ExecuteTemplate(w, "index.html", map[string]interface{}{
-			"Username":    uname,
-			"UserColor":   ucol,
+			"Username":  uname,
+			"UserColor": ucol,
+		})
+	})
+
+	// 2. ONLINE-LISTE FRAME
+	http.HandleFunc("/online", func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		var online []User
+		for _, u := range users {
+			online = append(online, *u)
+		}
+		tmpl.ExecuteTemplate(w, "online.html", map[string]interface{}{
 			"OnlineUsers": online,
 		})
 	})
 
-	// 2. MESSAGES
+	// 3. MESSAGES FRAME
 	http.HandleFunc("/messages", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -131,10 +136,8 @@ func main() {
 				currentUser = users[name]
 			}
 		}
-
 		processed := make([]Message, len(chatHistory))
 		copy(processed, chatHistory)
-
 		if currentUser != nil {
 			for i, m := range processed {
 				if m.IsEncrypted && m.Target == currentUser.Username {
@@ -146,13 +149,18 @@ func main() {
 				}
 			}
 		}
-
 		tmpl.ExecuteTemplate(w, "messages.html", map[string]interface{}{
 			"Messages": processed,
+			"Username": func() string {
+				if currentUser != nil {
+					return currentUser.Username
+				}
+				return ""
+			}(),
 		})
 	})
 
-	// 3. INPUT-FRAME (input.html)
+	// 4. INPUT FRAME
 	http.HandleFunc("/input", func(w http.ResponseWriter, r *http.Request) {
 		tmpl.ExecuteTemplate(w, "input.html", nil)
 	})
@@ -229,7 +237,7 @@ func main() {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
-	fmt.Println("Vincere Server running auf Arch Linux.")
-	fmt.Println("Link: http://127.0.0.1:8080")
+	fmt.Println("Vincere Messenger ready on Arch Linux.")
+	fmt.Println("Open: http://127.0.0.1:8080")
 	http.ListenAndServe(":8080", nil)
 }

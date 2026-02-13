@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="10">
     <link rel="stylesheet" href="/static/style.css">
     <title>vincere</title>
 </head>
@@ -10,29 +9,25 @@
     <div class="container">
         <h1>vincere</h1>
         {{if .Username}}
-        <div class="main-layout" style="display: flex; gap: 20px;">
-            <div class="sidebar" style="width: 150px; border-right: 1px solid #030; padding: 10px;">
-                <h3>Online</h3>
-                <ul class="user-list" style="list-style: none; padding: 0;">
-                    {{range .OnlineUsers}}
-                    <li style="color: {{.Color}}; margin-bottom: 5px;">● {{.Username}}</li>
-                    {{end}}
-                </ul>
+        <div class="main-layout" style="display: flex; gap: 20px; height: 550px;">
+            <div class="sidebar" style="width: 180px; border-right: 1px solid #030;">
+                <iframe src="/online" width="100%" height="100%" frameborder="0"></iframe>
             </div>
-            <div class="content" style="flex-grow: 1;">
+            
+            <div class="content" style="flex-grow: 1; display: flex; flex-direction: column;">
                 <iframe src="/messages" width="100%" height="400px" frameborder="0"></iframe>
-                <iframe src="/input" width="100%" height="100px" frameborder="0" scrolling="no"></iframe>
+                <iframe src="/input" width="100%" height="120px" frameborder="0" scrolling="no"></iframe>
             </div>
         </div>
-        <div class="footer">
+        <div class="footer" style="margin-top: 20px;">
             Logged in as: <b style="color: {{.UserColor}};">{{.Username}}</b> | <a href="/logout" target="_parent">Logout</a>
         </div>
         {{else}}
         <form action="/login" method="POST" class="login-form">
-            <input type="text" name="username" placeholder="Username" required>
+            <input type="text" name="username" placeholder="Username" required autofocus>
             <div class="settings">
                 <label>Theme Color: 
-                    <select name="color">
+                    <select name="color" style="background: #000; color: #0f0; border: 1px solid #030;">
                         <option value="AliceBlue" style="color: AliceBlue; background: #000;">AliceBlue</option>
                         <option value="AntiqueWhite" style="color: AntiqueWhite; background: #000;">AntiqueWhite</option>
                         <option value="Aqua" style="color: Aqua; background: #000;">Aqua</option>
