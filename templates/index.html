@@ -10,17 +10,17 @@
     <div class="container">
         <h1>vincere</h1>
         {{if .Username}}
-        <div class="main-layout">
-            <div class="sidebar">
+        <div class="main-layout" style="display: flex; gap: 20px;">
+            <div class="sidebar" style="width: 150px; border-right: 1px solid #030; padding: 10px;">
                 <h3>Online</h3>
-                <ul class="user-list">
+                <ul class="user-list" style="list-style: none; padding: 0;">
                     {{range .OnlineUsers}}
-                    <li style="color: {{.Color}};">● {{.Username}}</li>
+                    <li style="color: {{.Color}}; margin-bottom: 5px;">● {{.Username}}</li>
                     {{end}}
                 </ul>
             </div>
-            <div class="content">
-                <iframe src="/messages" width="100%" height="450px" frameborder="0"></iframe>
+            <div class="content" style="flex-grow: 1;">
+                <iframe src="/messages" width="100%" height="400px" frameborder="0"></iframe>
                 <iframe src="/input" width="100%" height="100px" frameborder="0" scrolling="no"></iframe>
             </div>
         </div>
