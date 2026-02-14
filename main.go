@@ -244,7 +244,7 @@ func main() {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
-	fmt.Println("Vincere Messenger running (100% In-House Crypto).")
+	fmt.Println("Vincere Messenger running.")
 	fmt.Println("Address: http://127.0.0.1:8080")
 	http.ListenAndServe(":8080", nil)
 }
