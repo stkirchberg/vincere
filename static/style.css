@@ -48,6 +48,7 @@ h1 {
     flex-direction: column;
     border-right: 1px solid #030;
     overflow: hidden;
+    border-left: 2px solid #030;
 }
 
 .chat-window {

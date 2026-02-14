@@ -36,7 +36,7 @@ var (
 	sessions    = make(map[string]string)
 	chatHistory []Message
 	serverLogs  []string
-	mu          sync.Mutex
+	mu          sync.RWMutex
 )
 
 // --- LOGGING HELPER ---
@@ -103,7 +103,7 @@ func main() {
 
 	// INDEX
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
+		mu.RLock()
 		var currentUser *User
 		if cookie, err := r.Cookie("session_id"); err == nil {
 			if name, ok := sessions[cookie.Value]; ok {
@@ -122,7 +122,7 @@ func main() {
 			uname = currentUser.Username
 			ucol = currentUser.Color
 		}
-		mu.Unlock()
+		mu.RUnlock()
 
 		tmpl.ExecuteTemplate(w, "index.html", map[string]interface{}{
 			"Username":    uname,
@@ -133,10 +133,10 @@ func main() {
 
 	// SERVER LOGS ENDPUNKT
 	http.HandleFunc("/server-logs", func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
+		mu.RLock()
 		logsCopy := make([]string, len(serverLogs))
 		copy(logsCopy, serverLogs)
-		mu.Unlock()
+		mu.RUnlock()
 
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprint(w, "<html><head><meta http-equiv='refresh' content='2'><style>body{background:#000;color:#0f0;font-family:monospace;font-size:12px;margin:10px;overflow-x:hidden;} .crypto{color:#f0f;} .auth{color:#0af;} .msg{color:#ff0;}</style></head><body>")
@@ -158,7 +158,7 @@ func main() {
 
 	// MESSAGES FRAME
 	http.HandleFunc("/messages", func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
+		mu.RLock()
 		var currentUser *User
 		if cookie, err := r.Cookie("session_id"); err == nil {
 			if name, ok := sessions[cookie.Value]; ok {
@@ -168,11 +168,14 @@ func main() {
 
 		processed := make([]Message, len(chatHistory))
 		copy(processed, chatHistory)
+		mu.RUnlock()
 
 		if currentUser != nil {
 			for i, m := range processed {
 				if m.IsEncrypted && m.Target == currentUser.Username {
+					mu.RLock()
 					sender, exist := users[m.Sender]
+					mu.RUnlock()
 					if exist {
 						shared, _ := X25519(currentUser.PrivKey, sender.PubKey)
 						processed[i].Content = decrypt(shared[:], m.Content)
@@ -180,7 +183,6 @@ func main() {
 				}
 			}
 		}
-		mu.Unlock()
 
 		tmpl.ExecuteTemplate(w, "messages.html", map[string]interface{}{
 			"Messages": processed,
@@ -218,7 +220,7 @@ func main() {
 			mu.Unlock()
 
 			addLog("AUTH", "Session created for "+name)
-			http.SetCookie(w, &http.Cookie{Name: "session_id", Value: sid, Path: "/", HttpOnly: true})
+			http.SetCookie(w, &http.Cookie{Name: "session_id", Value: sid, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode})
 		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
@@ -230,10 +232,10 @@ func main() {
 			http.Redirect(w, r, "/input", http.StatusSeeOther)
 			return
 		}
-		mu.Lock()
+		mu.RLock()
 		senderName := sessions[cookie.Value]
 		sender, ok := users[senderName]
-		mu.Unlock()
+		mu.RUnlock()
 		if !ok {
 			http.Redirect(w, r, "/input", http.StatusSeeOther)
 			return
@@ -247,9 +249,9 @@ func main() {
 				parts := strings.SplitN(text, " ", 2)
 				targetName := strings.TrimPrefix(parts[0], "@")
 
-				mu.Lock()
+				mu.RLock()
 				target, exists := users[targetName]
-				mu.Unlock()
+				mu.RUnlock()
 
 				if exists && len(parts) > 1 {
 					addLog("CRYPTO", fmt.Sprintf("Initiating E2EE: %s -> %s", senderName, targetName))
@@ -276,13 +278,22 @@ func main() {
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
 		if cookie, err := r.Cookie("session_id"); err == nil {
 			mu.Lock()
-			name := sessions[cookie.Value]
-			addLog("AUTH", "User logout: "+name)
-			delete(sessions, cookie.Value)
-			delete(users, name)
+			if name, ok := sessions[cookie.Value]; ok {
+				addLog("AUTH", "User logout: "+name)
+				delete(users, name)
+				delete(sessions, cookie.Value)
+			}
 			mu.Unlock()
 		}
-		http.SetCookie(w, &http.Cookie{Name: "session_id", Value: "", Path: "/", MaxAge: -1})
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_id",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
