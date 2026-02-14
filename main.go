@@ -35,7 +35,7 @@ var (
 	users       = make(map[string]*User)
 	sessions    = make(map[string]string)
 	chatHistory []Message
-	serverLogs  []string //
+	serverLogs  []string
 	mu          sync.Mutex
 )
 
@@ -58,10 +58,8 @@ func addLog(category, message string) {
 func encrypt(key []byte, text string) string {
 	iv := make([]byte, 32)
 	rand.Read(iv)
-
 	padded := pad([]byte(text))
 	ciphered, _ := aesIgeEncrypt(key, iv, padded)
-
 	final := append(iv, ciphered...)
 	return hex.EncodeToString(final)
 }
@@ -71,21 +69,19 @@ func decrypt(key []byte, hexText string) string {
 	if err != nil || len(data) < 32 {
 		return "[Error]"
 	}
-
 	iv := data[:32]
 	ciphered := data[32:]
-
 	plainPadded, err := aesIgeDecrypt(key, iv, ciphered)
 	if err != nil {
 		return "[Decryption Failed]"
 	}
-
 	return string(unpad(plainPadded))
 }
 
 func main() {
 	tmpl := template.Must(template.ParseFS(content, "templates/*.html"))
 
+	// Cleanup-Routine
 	go func() {
 		for {
 			time.Sleep(1 * time.Minute)
@@ -114,6 +110,13 @@ func main() {
 				currentUser = users[name]
 			}
 		}
+
+		var onlineNames []string
+		for _, u := range users {
+			onlineNames = append(onlineNames, u.Username)
+		}
+		onlineString := strings.Join(onlineNames, ", ")
+
 		var uname, ucol string
 		if currentUser != nil {
 			uname = currentUser.Username
@@ -122,12 +125,13 @@ func main() {
 		mu.Unlock()
 
 		tmpl.ExecuteTemplate(w, "index.html", map[string]interface{}{
-			"Username":  uname,
-			"UserColor": ucol,
+			"Username":    uname,
+			"UserColor":   ucol,
+			"OnlineUsers": onlineString,
 		})
 	})
 
-	// SERVER LOGS
+	// SERVER LOGS ENDPUNKT
 	http.HandleFunc("/server-logs", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		logsCopy := make([]string, len(serverLogs))
@@ -135,8 +139,7 @@ func main() {
 		mu.Unlock()
 
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, "<html><head><meta http-equiv='refresh' content='2'><style>body{background:#000;color:#0f0;font-family:monospace;font-size:12px;margin:10px;} .crypto{color:#f0f;} .auth{color:#0af;} .msg{color:#ff0;}</style></head><body>")
-		fmt.Fprint(w, "<div>--- START OF SESSION LOG ---</div>")
+		fmt.Fprint(w, "<html><head><meta http-equiv='refresh' content='2'><style>body{background:#000;color:#0f0;font-family:monospace;font-size:12px;margin:10px;overflow-x:hidden;} .crypto{color:#f0f;} .auth{color:#0af;} .msg{color:#ff0;}</style></head><body>")
 		for _, l := range logsCopy {
 			class := ""
 			if strings.Contains(l, "CRYPTO") {
@@ -150,20 +153,7 @@ func main() {
 			}
 			fmt.Fprintf(w, "<div %s>%s</div>", class, l)
 		}
-		fmt.Fprint(w, "<div id='end'></div><script>window.scrollTo(0,document.body.scrollHeight);</script></body></html>")
-	})
-
-	// ONLINE-LIST
-	http.HandleFunc("/online", func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		var online []User
-		for _, u := range users {
-			online = append(online, *u)
-		}
-		mu.Unlock()
-		tmpl.ExecuteTemplate(w, "online.html", map[string]interface{}{
-			"OnlineUsers": online,
-		})
+		fmt.Fprint(w, "<script>window.scrollTo(0,document.body.scrollHeight);</script></body></html>")
 	})
 
 	// MESSAGES FRAME
@@ -184,7 +174,6 @@ func main() {
 				if m.IsEncrypted && m.Target == currentUser.Username {
 					sender, exist := users[m.Sender]
 					if exist {
-						addLog("CRYPTO", fmt.Sprintf("Decrypting msg from %s for %s (X25519 Key-Exchange)", m.Sender, currentUser.Username))
 						shared, _ := X25519(currentUser.PrivKey, sender.PubKey)
 						processed[i].Content = decrypt(shared[:], m.Content)
 					}
@@ -228,7 +217,7 @@ func main() {
 			sessions[sid] = name
 			mu.Unlock()
 
-			addLog("AUTH", "Session created for "+name+" (SID: "+sid[:8]+"... )")
+			addLog("AUTH", "Session created for "+name)
 			http.SetCookie(w, &http.Cookie{Name: "session_id", Value: sid, Path: "/", HttpOnly: true})
 		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -265,17 +254,15 @@ func main() {
 				if exists && len(parts) > 1 {
 					addLog("CRYPTO", fmt.Sprintf("Initiating E2EE: %s -> %s", senderName, targetName))
 					shared, _ := X25519(sender.PrivKey, target.PubKey)
-					addLog("CRYPTO", "Shared Secret established. AES-IGE Encryption starting...")
-
 					msg.Content = encrypt(shared[:], parts[1])
 					msg.Target = targetName
 					msg.IsEncrypted = true
-					addLog("MSG", "Encrypted message appended to history.")
+					addLog("MSG", "Encrypted private message stored.")
 				} else {
-					addLog("MSG", "Broadcast message from "+senderName)
+					addLog("MSG", "Public message from "+senderName)
 				}
 			} else {
-				addLog("MSG", "Broadcast message from "+senderName)
+				addLog("MSG", "Public message from "+senderName)
 			}
 
 			mu.Lock()
