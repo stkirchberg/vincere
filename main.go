@@ -1,14 +1,11 @@
 package main
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"embed"
 	"encoding/hex"
 	"fmt"
 	"html/template"
-	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -41,32 +38,34 @@ var (
 	mu          sync.Mutex
 )
 
-// --- CRYPTO HELPERS (AES standard) ---
+// CRYPTO HELPERS
+
 func encrypt(key []byte, text string) string {
-	block, _ := aes.NewCipher(key)
-	gcm, _ := cipher.NewGCM(block)
-	nonce := make([]byte, gcm.NonceSize())
-	io.ReadFull(rand.Reader, nonce)
-	return hex.EncodeToString(gcm.Seal(nonce, nonce, []byte(text), nil))
+	iv := make([]byte, 32)
+	rand.Read(iv)
+
+	padded := pad([]byte(text))
+	ciphered, _ := aesIgeEncrypt(key, iv, padded)
+
+	final := append(iv, ciphered...)
+	return hex.EncodeToString(final)
 }
 
 func decrypt(key []byte, hexText string) string {
 	data, err := hex.DecodeString(hexText)
-	if err != nil {
+	if err != nil || len(data) < 32 {
 		return "[Error]"
 	}
-	block, _ := aes.NewCipher(key)
-	gcm, _ := cipher.NewGCM(block)
-	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return "[Error]"
-	}
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+
+	iv := data[:32]
+	ciphered := data[32:]
+
+	plainPadded, err := aesIgeDecrypt(key, iv, ciphered)
 	if err != nil {
 		return "[Decryption Failed]"
 	}
-	return string(plaintext)
+
+	return string(unpad(plainPadded))
 }
 
 func main() {
@@ -91,7 +90,7 @@ func main() {
 
 	http.Handle("/static/", http.FileServer(http.FS(content)))
 
-	// 1. INDEX
+	// INDEX
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -112,7 +111,7 @@ func main() {
 		})
 	})
 
-	// 2. ONLINE-LISTE FRAME
+	// ONLINE-LIST
 	http.HandleFunc("/online", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -125,7 +124,7 @@ func main() {
 		})
 	})
 
-	// 3. MESSAGES FRAME
+	// MESSAGES FRAME
 	http.HandleFunc("/messages", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -135,6 +134,7 @@ func main() {
 				currentUser = users[name]
 			}
 		}
+
 		processed := make([]Message, len(chatHistory))
 		copy(processed, chatHistory)
 
@@ -160,7 +160,7 @@ func main() {
 		})
 	})
 
-	// 4. INPUT FRAME
+	// INPUT FRAME
 	http.HandleFunc("/input", func(w http.ResponseWriter, r *http.Request) {
 		tmpl.ExecuteTemplate(w, "input.html", nil)
 	})
@@ -244,7 +244,7 @@ func main() {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
-	fmt.Println("Vincere Messenger running (All-In-House Crypto).")
+	fmt.Println("Vincere Messenger running (100% In-House Crypto).")
 	fmt.Println("Address: http://127.0.0.1:8080")
 	http.ListenAndServe(":8080", nil)
 }
