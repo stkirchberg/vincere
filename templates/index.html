@@ -3,31 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="/static/style.css">
-    <title>vincere</title>
+    <title>vincere | Dev-Edition</title>
+    
 </head>
 <body>
     <div class="container">
         <h1>vincere</h1>
         {{if .Username}}
-        <div class="main-layout" style="display: flex; gap: 20px; height: 550px;">
-            <div class="sidebar" style="width: 180px; border-right: 1px solid #030;">
-                <iframe src="/online" width="100%" height="100%" frameborder="0"></iframe>
-            </div>
+        <div class="main-layout">
             
-            <div class="content" style="flex-grow: 1; display: flex; flex-direction: column;">
-                <iframe src="/messages" width="100%" height="400px" frameborder="0"></iframe>
-                <iframe src="/input" width="100%" height="120px" frameborder="0" scrolling="no"></iframe>
+            <div class="chat-section">
+                <div class="chat-area">
+                    <div class="sidebar" style="width: 120px; flex-shrink: 0;">
+                        <iframe src="/online" width="100%" height="100%" frameborder="0"></iframe>
+                    </div>
+                    
+                    <div style="flex-grow: 1; display: flex; flex-direction: column;">
+                        <iframe src="/messages" width="100%" height="400px" frameborder="0"></iframe>
+                        <iframe src="/input" width="100%" height="120px" frameborder="0" scrolling="no"></iframe>
+                    </div>
+                </div>
+                
+                <div class="footer" style="margin-top: 15px;">
+                    Logged in as: <b style="color: {{.UserColor}};">{{.Username}}</b> | <a href="/logout" target="_parent">Logout</a>
+                </div>
             </div>
-        </div>
-        <div class="footer" style="margin-top: 20px;">
-            Logged in as: <b style="color: {{.UserColor}};">{{.Username}}</b> | <a href="/logout" target="_parent">Logout</a>
+
+            <div class="log-panel">
+                <div class="log-header">System Backend Stream :: Verbosity: High</div>
+                <iframe src="/server-logs" class="log-frame"></iframe>
+            </div>
+
         </div>
         {{else}}
         <form action="/login" method="POST" class="login-form">
             <input type="text" name="username" placeholder="Username" required autofocus>
             <div class="settings">
                 <label>Theme Color: 
-                    <select name="color" style="background: #000; color: #0f0; border: 1px solid #030;">
+                    <select name="color" style="background: #000; color: #0f0; border: 1px solid #030; width: 100%; margin-top: 10px;">
                         <option value="AliceBlue" style="color: AliceBlue; background: #000;">AliceBlue</option>
                         <option value="AntiqueWhite" style="color: AntiqueWhite; background: #000;">AntiqueWhite</option>
                         <option value="Aqua" style="color: Aqua; background: #000;">Aqua</option>
@@ -172,7 +185,7 @@
                     </select>
                 </label>
             </div>
-            <button type="submit">ENTER</button>
+            <button type="submit" style="width: 100%; margin-top: 20px;">INITIALIZE SESSION</button>
         </form>
         {{end}}
     </div>

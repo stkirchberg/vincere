@@ -35,10 +35,25 @@ var (
 	users       = make(map[string]*User)
 	sessions    = make(map[string]string)
 	chatHistory []Message
+	serverLogs  []string //
 	mu          sync.Mutex
 )
 
-// CRYPTO HELPERS
+// --- LOGGING HELPER ---
+
+func addLog(category, message string) {
+	mu.Lock()
+	defer mu.Unlock()
+	timestamp := time.Now().Format("15:04:05.000")
+	entry := fmt.Sprintf("[%s] %-10s | %s", timestamp, category, message)
+	serverLogs = append(serverLogs, entry)
+
+	if len(serverLogs) > 200 {
+		serverLogs = serverLogs[1:]
+	}
+}
+
+// --- CRYPTO HELPERS ---
 
 func encrypt(key []byte, text string) string {
 	iv := make([]byte, 32)
@@ -71,7 +86,6 @@ func decrypt(key []byte, hexText string) string {
 func main() {
 	tmpl := template.Must(template.ParseFS(content, "templates/*.html"))
 
-	// Cleanup-Routine
 	go func() {
 		for {
 			time.Sleep(1 * time.Minute)
@@ -85,6 +99,7 @@ func main() {
 			}
 			chatHistory = updated
 			mu.Unlock()
+			addLog("SYSTEM", "Routine cleanup: Old messages purged.")
 		}
 	}()
 
@@ -93,7 +108,6 @@ func main() {
 	// INDEX
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
-		defer mu.Unlock()
 		var currentUser *User
 		if cookie, err := r.Cookie("session_id"); err == nil {
 			if name, ok := sessions[cookie.Value]; ok {
@@ -105,20 +119,48 @@ func main() {
 			uname = currentUser.Username
 			ucol = currentUser.Color
 		}
+		mu.Unlock()
+
 		tmpl.ExecuteTemplate(w, "index.html", map[string]interface{}{
 			"Username":  uname,
 			"UserColor": ucol,
 		})
 	})
 
+	// SERVER LOGS
+	http.HandleFunc("/server-logs", func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		logsCopy := make([]string, len(serverLogs))
+		copy(logsCopy, serverLogs)
+		mu.Unlock()
+
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, "<html><head><meta http-equiv='refresh' content='2'><style>body{background:#000;color:#0f0;font-family:monospace;font-size:12px;margin:10px;} .crypto{color:#f0f;} .auth{color:#0af;} .msg{color:#ff0;}</style></head><body>")
+		fmt.Fprint(w, "<div>--- START OF SESSION LOG ---</div>")
+		for _, l := range logsCopy {
+			class := ""
+			if strings.Contains(l, "CRYPTO") {
+				class = "class='crypto'"
+			}
+			if strings.Contains(l, "AUTH") {
+				class = "class='auth'"
+			}
+			if strings.Contains(l, "MSG") {
+				class = "class='msg'"
+			}
+			fmt.Fprintf(w, "<div %s>%s</div>", class, l)
+		}
+		fmt.Fprint(w, "<div id='end'></div><script>window.scrollTo(0,document.body.scrollHeight);</script></body></html>")
+	})
+
 	// ONLINE-LIST
 	http.HandleFunc("/online", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
-		defer mu.Unlock()
 		var online []User
 		for _, u := range users {
 			online = append(online, *u)
 		}
+		mu.Unlock()
 		tmpl.ExecuteTemplate(w, "online.html", map[string]interface{}{
 			"OnlineUsers": online,
 		})
@@ -127,7 +169,6 @@ func main() {
 	// MESSAGES FRAME
 	http.HandleFunc("/messages", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
-		defer mu.Unlock()
 		var currentUser *User
 		if cookie, err := r.Cookie("session_id"); err == nil {
 			if name, ok := sessions[cookie.Value]; ok {
@@ -143,12 +184,15 @@ func main() {
 				if m.IsEncrypted && m.Target == currentUser.Username {
 					sender, exist := users[m.Sender]
 					if exist {
+						addLog("CRYPTO", fmt.Sprintf("Decrypting msg from %s for %s (X25519 Key-Exchange)", m.Sender, currentUser.Username))
 						shared, _ := X25519(currentUser.PrivKey, sender.PubKey)
 						processed[i].Content = decrypt(shared[:], m.Content)
 					}
 				}
 			}
 		}
+		mu.Unlock()
+
 		tmpl.ExecuteTemplate(w, "messages.html", map[string]interface{}{
 			"Messages": processed,
 			"Username": func() string {
@@ -170,6 +214,7 @@ func main() {
 		name := strings.TrimSpace(r.FormValue("username"))
 		color := r.FormValue("color")
 		if name != "" {
+			addLog("AUTH", "Generating new X25519 keypair for user: "+name)
 			priv, pub := GenerateKeyPair()
 
 			mu.Lock()
@@ -183,6 +228,7 @@ func main() {
 			sessions[sid] = name
 			mu.Unlock()
 
+			addLog("AUTH", "Session created for "+name+" (SID: "+sid[:8]+"... )")
 			http.SetCookie(w, &http.Cookie{Name: "session_id", Value: sid, Path: "/", HttpOnly: true})
 		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -217,11 +263,19 @@ func main() {
 				mu.Unlock()
 
 				if exists && len(parts) > 1 {
+					addLog("CRYPTO", fmt.Sprintf("Initiating E2EE: %s -> %s", senderName, targetName))
 					shared, _ := X25519(sender.PrivKey, target.PubKey)
+					addLog("CRYPTO", "Shared Secret established. AES-IGE Encryption starting...")
+
 					msg.Content = encrypt(shared[:], parts[1])
 					msg.Target = targetName
 					msg.IsEncrypted = true
+					addLog("MSG", "Encrypted message appended to history.")
+				} else {
+					addLog("MSG", "Broadcast message from "+senderName)
 				}
+			} else {
+				addLog("MSG", "Broadcast message from "+senderName)
 			}
 
 			mu.Lock()
@@ -236,6 +290,7 @@ func main() {
 		if cookie, err := r.Cookie("session_id"); err == nil {
 			mu.Lock()
 			name := sessions[cookie.Value]
+			addLog("AUTH", "User logout: "+name)
 			delete(sessions, cookie.Value)
 			delete(users, name)
 			mu.Unlock()
@@ -246,5 +301,6 @@ func main() {
 
 	fmt.Println("Vincere Messenger running.")
 	fmt.Println("Address: http://127.0.0.1:8080")
+	addLog("SYSTEM", "Server started on :8080")
 	http.ListenAndServe(":8080", nil)
 }

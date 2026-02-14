@@ -143,3 +143,39 @@ iframe {
 iframe::-webkit-scrollbar {
     display: none;
 }
+
+
+
+
+.main-layout {
+    display: grid;
+    grid-template-columns: 2fr 3fr;
+    gap: 20px;
+    height: 80vh;
+    margin-top: 20px;
+}
+
+.log-panel {
+    background: #050505;
+    border: 1px solid #030;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.log-header {
+    background: #030;
+    color: #0f0;
+    font-size: 0.7em;
+    padding: 5px 10px;
+    letter-spacing: 2px;
+}
+
+@media (max-width: 1024px) {
+    .main-layout {
+        grid-template-columns:
+    }
+    .log-panel {
+        display: none;
+    }
+}
