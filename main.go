@@ -143,7 +143,7 @@ func main() {
 				if m.IsEncrypted && m.Target == currentUser.Username {
 					sender, exist := users[m.Sender]
 					if exist {
-						shared := X25519(currentUser.PrivKey, sender.PubKey)
+						shared, _ := X25519(currentUser.PrivKey, sender.PubKey)
 						processed[i].Content = decrypt(shared[:], m.Content)
 					}
 				}
@@ -217,7 +217,7 @@ func main() {
 				mu.Unlock()
 
 				if exists && len(parts) > 1 {
-					shared := X25519(sender.PrivKey, target.PubKey)
+					shared, _ := X25519(sender.PrivKey, target.PubKey)
 					msg.Content = encrypt(shared[:], parts[1])
 					msg.Target = targetName
 					msg.IsEncrypted = true

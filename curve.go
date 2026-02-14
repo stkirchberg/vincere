@@ -58,7 +58,6 @@ func X25519(scalar, basePoint [32]byte) ([32]byte, error) {
 	s[31] &= 127
 	s[31] |= 64
 
-	// Memory-Zeroing
 	defer func() {
 		for i := range s {
 			s[i] = 0
@@ -106,7 +105,6 @@ func X25519(scalar, basePoint [32]byte) ([32]byte, error) {
 	mul(&x2, &x2, &invZ)
 	res := encodeFE(x2)
 
-	// Low-Order Check
 	var zero [32]byte
 	if subtle.ConstantTimeCompare(res[:], zero[:]) == 1 {
 		return [32]byte{}, errors.New("low-order point")
@@ -125,13 +123,16 @@ func GenerateKeyPair() (priv, pub [32]byte) {
 }
 
 func decodeFE(in [32]byte) fe {
-	return fe{
-		binary.LittleEndian.Uint64(in[0:8]) & 0x7ffffffffffff,
-		(binary.LittleEndian.Uint64(in[6:14]) >> 3) & 0x7ffffffffffff,
-		(binary.LittleEndian.Uint64(in[12:20]) >> 6) & 0x7ffffffffffff,
-		(binary.LittleEndian.Uint64(in[19:27]) >> 1) & 0x7ffffffffffff,
-		(binary.LittleEndian.Uint64(in[25:32]) >> 4) & 0x7ffffffffffff,
-	}
+	var out fe
+	out[0] = binary.LittleEndian.Uint64(in[0:8]) & 0x7ffffffffffff
+	out[1] = (binary.LittleEndian.Uint64(in[6:14]) >> 3) & 0x7ffffffffffff
+	out[2] = (binary.LittleEndian.Uint64(in[12:20]) >> 6) & 0x7ffffffffffff
+	out[3] = (binary.LittleEndian.Uint64(in[19:27]) >> 1) & 0x7ffffffffffff
+	last := uint64(in[25]) | uint64(in[26])<<8 | uint64(in[27])<<16 |
+		uint64(in[28])<<24 | uint64(in[29])<<32 | uint64(in[30])<<40 |
+		uint64(in[31])<<48
+	out[4] = (last >> 4) & 0x7ffffffffffff
+	return out
 }
 
 func encodeFE(in fe) [32]byte {
