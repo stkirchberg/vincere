@@ -131,7 +131,7 @@ func main() {
 		})
 	})
 
-	// SERVER LOGS ENDPUNKT
+	// SERVER LOGS FRAME
 	http.HandleFunc("/server-logs", func(w http.ResponseWriter, r *http.Request) {
 		mu.RLock()
 		logsCopy := make([]string, len(serverLogs))
@@ -274,9 +274,7 @@ func main() {
 		http.Redirect(w, r, "/input", http.StatusSeeOther)
 	})
 
-	// LOGOUT - Tor-optimiert ohne JS-Abhängigkeit
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
-		// Cookie sofort im Browser löschen
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_id",
 			Value:    "",
@@ -286,7 +284,6 @@ func main() {
 			SameSite: http.SameSiteLaxMode,
 		})
 
-		// Cleanup asynchron in Goroutine, um Deadlocks mit Refreshes zu vermeiden
 		if cookie, err := r.Cookie("session_id"); err == nil {
 			sid := cookie.Value
 			go func(sessionID string) {
@@ -299,7 +296,6 @@ func main() {
 			}(sid)
 		}
 
-		// Verbindung explizit kappen und Redirect
 		w.Header().Set("Connection", "close")
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
