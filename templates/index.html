@@ -37,7 +37,10 @@
                 <span class="separator">|</span>
                 Online: <span class="online-list">{{.OnlineUsers}}</span>
             </div>
-            <a href="/logout" target="_parent" class="logout-link">[EXIT SESSION]</a>
+            <a href="/logout" 
+               target="_top" 
+               onclick="window.stop();" 
+               class="logout-link">[EXIT SESSION]</a>
         </div>
 
         {{else}}
