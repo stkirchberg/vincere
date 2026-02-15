@@ -1,18 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <meta http-equiv="refresh" content="2">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body style="background: #000; padding: 0; margin: 0; overflow-x: hidden;">
     <div class="chat-box">
         {{range .Messages}}
-        <div class="message" style="border-left-color: {{.Color}};">
-            <span class="time">[{{.Timestamp.Format "15:04"}}]</span>
-            <span class="user" style="color: {{.Color}};">{{.Sender}}:</span>
+        <div class="message" style="border-left: 3px solid {{.Color}}; padding-left: 10px; margin-bottom: 5px;">
+            <span class="time" style="color: #666; font-size: 0.8em;">[{{.Timestamp.Format "15:04"}}]</span>
+            <span class="user" style="color: {{.Color}}; font-weight: bold;">{{.Sender}}:</span>
             <span class="text" style="color: {{.Color}};">
                 {{if .IsEncrypted}}
-                    {{if eq .Target $.Username}} {{.Content}} {{else}} <span class="enc-label">[Encrypted]</span> {{end}}
+                    {{if eq .Target $.Username}} 
+                        {{.Content}} 
+                    {{else}} 
+                        <span style="opacity: 0.5;">[Encrypted]</span> 
+                    {{end}}
                 {{else}}
                     {{.Content}}
                 {{end}}

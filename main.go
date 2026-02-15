@@ -153,7 +153,7 @@ func main() {
 			}
 			fmt.Fprintf(w, "<div %s>%s</div>", class, l)
 		}
-		fmt.Fprint(w, "<script>window.scrollTo(0,document.body.scrollHeight);</script></body></html>")
+		fmt.Fprint(w, "</body></html>")
 	})
 
 	// MESSAGES FRAME
@@ -274,18 +274,9 @@ func main() {
 		http.Redirect(w, r, "/input", http.StatusSeeOther)
 	})
 
-	// LOGOUT
+	// LOGOUT - Tor-optimiert ohne JS-Abhängigkeit
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
-		if cookie, err := r.Cookie("session_id"); err == nil {
-			mu.Lock()
-			if name, ok := sessions[cookie.Value]; ok {
-				addLog("AUTH", "User logout: "+name)
-				delete(users, name)
-				delete(sessions, cookie.Value)
-			}
-			mu.Unlock()
-		}
-
+		// Cookie sofort im Browser löschen
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_id",
 			Value:    "",
@@ -294,6 +285,22 @@ func main() {
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
 		})
+
+		// Cleanup asynchron in Goroutine, um Deadlocks mit Refreshes zu vermeiden
+		if cookie, err := r.Cookie("session_id"); err == nil {
+			sid := cookie.Value
+			go func(sessionID string) {
+				mu.Lock()
+				defer mu.Unlock()
+				if name, ok := sessions[sessionID]; ok {
+					delete(users, name)
+					delete(sessions, sessionID)
+				}
+			}(sid)
+		}
+
+		// Verbindung explizit kappen und Redirect
+		w.Header().Set("Connection", "close")
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
