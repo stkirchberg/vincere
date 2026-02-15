@@ -1,5 +1,14 @@
 package main
 
+import (
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+)
+
+// --- S-BOX & TABLES ---
 var sbox = [256]byte{
 	0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
 	0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -19,13 +28,125 @@ var sbox = [256]byte{
 	0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
 }
 
-var rsbox = [256]byte{}
+var rsbox [256]byte
 
 func init() {
 	for i, b := range sbox {
 		rsbox[b] = byte(i)
 	}
 }
+
+func encryptFull(sharedSecret []byte, plaintext string) (string, error) {
+	salt := make([]byte, 16)
+	rand.Read(salt)
+
+	// KDF: Make Key and IV from Secret + Salt
+	key, iv := deriveKeys(sharedSecret, salt)
+
+	paddedPlain := pad([]byte(plaintext))
+	ciphertext, err := aesIgeEncrypt(key, iv, paddedPlain)
+	if err != nil {
+		return "", err
+	}
+
+	// HMAC with Salt + Ciphertext
+	mac := calculateHMAC(key, append(salt, ciphertext...))
+
+	// Salt(16) + MAC(32) + Ciphertext
+	final := append(salt, append(mac, ciphertext...)...)
+	return hex.EncodeToString(final), nil
+}
+
+func decryptFull(sharedSecret []byte, hexData string) (string, error) {
+	data, err := hex.DecodeString(hexData)
+	if err != nil || len(data) < 48 {
+		return "[Formatfehler]", nil
+	}
+
+	salt := data[:16]
+	receivedMac := data[16:48]
+	ciphertext := data[48:]
+
+	key, iv := deriveKeys(sharedSecret, salt)
+
+	// MAC
+	expectedMac := calculateHMAC(key, append(salt, ciphertext...))
+	if !hmac.Equal(receivedMac, expectedMac) {
+		return "[Integritätsfehler: Nachricht manipuliert]", nil
+	}
+
+	decryptedPadded, err := aesIgeDecrypt(key, iv, ciphertext)
+	if err != nil {
+		return "[Entschlüsselungsfehler]", nil
+	}
+
+	unpadded, err := unpad(decryptedPadded)
+	if err != nil {
+		return "[Paddingfehler]", nil
+	}
+
+	return string(unpadded), nil
+}
+
+// --- CRYPTO HELPERS ---
+
+func deriveKeys(sharedSecret, salt []byte) (key, iv []byte) {
+	h := hmac.New(sha256.New, salt)
+	h.Write(sharedSecret)
+	key = h.Sum(nil) // 32 Byte Key
+
+	h.Write([]byte("vincere_ige_iv_extension"))
+	iv = h.Sum(nil) // 32 Byte IV
+	return key, iv
+}
+
+func calculateHMAC(key, data []byte) []byte {
+	h := hmac.New(sha256.New, key)
+	h.Write(data)
+	return h.Sum(nil)
+}
+
+// --- CORE AES IGE LOGIC ---
+
+func aesIgeEncrypt(key, iv, plaintext []byte) ([]byte, error) {
+	expanded := expandKey(key)
+	ciphertext := make([]byte, len(plaintext))
+	prevC, prevP := iv[:16], iv[16:32]
+
+	for i := 0; i < len(plaintext); i += 16 {
+		chunk := make([]byte, 16)
+		for j := 0; j < 16; j++ {
+			chunk[j] = plaintext[i+j] ^ prevC[j]
+		}
+		enc := encryptBlock(expanded, chunk)
+		for j := 0; j < 16; j++ {
+			ciphertext[i+j] = enc[j] ^ prevP[j]
+		}
+		prevC, prevP = ciphertext[i:i+16], plaintext[i:i+16]
+	}
+	return ciphertext, nil
+}
+
+func aesIgeDecrypt(key, iv, ciphertext []byte) ([]byte, error) {
+	expanded := expandKey(key)
+	plaintext := make([]byte, len(ciphertext))
+	prevC, prevP := iv[:16], iv[16:32]
+
+	for i := 0; i < len(ciphertext); i += 16 {
+		chunk := make([]byte, 16)
+		for j := 0; j < 16; j++ {
+			chunk[j] = ciphertext[i+j] ^ prevP[j]
+		}
+		dec := decryptBlock(expanded, chunk)
+		for j := 0; j < 16; j++ {
+			plaintext[i+j] = dec[j] ^ prevC[j]
+		}
+		prevP, prevC = plaintext[i:i+16], ciphertext[i:i+16]
+	}
+	return plaintext, nil
+}
+
+// --- LOW LEVEL AES BLOCKS ---
 
 func gfMul(a, b byte) byte {
 	var p byte
@@ -43,12 +164,10 @@ func gfMul(a, b byte) byte {
 	return p
 }
 
-// Key Expansion for AES-256
 func expandKey(key []byte) []byte {
 	w := make([]byte, 240)
 	copy(w, key)
 	rcon := []byte{0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36}
-
 	for i := 32; i < 240; i += 4 {
 		temp := make([]byte, 4)
 		copy(temp, w[i-4:i])
@@ -66,6 +185,40 @@ func expandKey(key []byte) []byte {
 	}
 	return w
 }
+
+func encryptBlock(expandedKey, block []byte) []byte {
+	state := make([]byte, 16)
+	copy(state, block)
+	addRoundKey(state, expandedKey[0:16])
+	for r := 1; r < 14; r++ {
+		subBytes(state, sbox)
+		shiftRows(state)
+		mixColumns(state)
+		addRoundKey(state, expandedKey[r*16:(r+1)*16])
+	}
+	subBytes(state, sbox)
+	shiftRows(state)
+	addRoundKey(state, expandedKey[224:240])
+	return state
+}
+
+func decryptBlock(expandedKey, block []byte) []byte {
+	state := make([]byte, 16)
+	copy(state, block)
+	addRoundKey(state, expandedKey[224:240])
+	for r := 13; r >= 1; r-- {
+		invShiftRows(state)
+		subBytes(state, rsbox)
+		addRoundKey(state, expandedKey[r*16:(r+1)*16])
+		invMixColumns(state)
+	}
+	invShiftRows(state)
+	subBytes(state, rsbox)
+	addRoundKey(state, expandedKey[0:16])
+	return state
+}
+
+// --- AES PRIMITIVES ---
 
 func addRoundKey(s, k []byte) {
 	for i := 0; i < 16; i++ {
@@ -111,73 +264,7 @@ func invMixColumns(s []byte) {
 	}
 }
 
-func encryptBlock(expandedKey, block []byte) []byte {
-	state := make([]byte, 16)
-	copy(state, block)
-	addRoundKey(state, expandedKey[0:16])
-	for r := 1; r < 14; r++ {
-		subBytes(state, sbox)
-		shiftRows(state)
-		mixColumns(state)
-		addRoundKey(state, expandedKey[r*16:(r+1)*16])
-	}
-	subBytes(state, sbox)
-	shiftRows(state)
-	addRoundKey(state, expandedKey[224:240])
-	return state
-}
-
-func decryptBlock(expandedKey, block []byte) []byte {
-	state := make([]byte, 16)
-	copy(state, block)
-	addRoundKey(state, expandedKey[224:240])
-	for r := 13; r >= 1; r-- {
-		invShiftRows(state)
-		subBytes(state, rsbox)
-		addRoundKey(state, expandedKey[r*16:(r+1)*16])
-		invMixColumns(state)
-	}
-	invShiftRows(state)
-	subBytes(state, rsbox)
-	addRoundKey(state, expandedKey[0:16])
-	return state
-}
-
-func aesIgeEncrypt(key, iv, plaintext []byte) ([]byte, error) {
-	expanded := expandKey(key)
-	ciphertext := make([]byte, len(plaintext))
-	prevC, prevP := iv[:16], iv[16:32]
-	for i := 0; i < len(plaintext); i += 16 {
-		chunk := make([]byte, 16)
-		for j := 0; j < 16; j++ {
-			chunk[j] = plaintext[i+j] ^ prevC[j]
-		}
-		enc := encryptBlock(expanded, chunk)
-		for j := 0; j < 16; j++ {
-			ciphertext[i+j] = enc[j] ^ prevP[j]
-		}
-		prevC, prevP = ciphertext[i:i+16], plaintext[i:i+16]
-	}
-	return ciphertext, nil
-}
-
-func aesIgeDecrypt(key, iv, ciphertext []byte) ([]byte, error) {
-	expanded := expandKey(key)
-	plaintext := make([]byte, len(ciphertext))
-	prevC, prevP := iv[:16], iv[16:32]
-	for i := 0; i < len(ciphertext); i += 16 {
-		chunk := make([]byte, 16)
-		for j := 0; j < 16; j++ {
-			chunk[j] = ciphertext[i+j] ^ prevP[j]
-		}
-		dec := decryptBlock(expanded, chunk)
-		for j := 0; j < 16; j++ {
-			plaintext[i+j] = dec[j] ^ prevC[j]
-		}
-		prevP, prevC = plaintext[i:i+16], ciphertext[i:i+16]
-	}
-	return plaintext, nil
-}
+// --- PADDING ---
 
 func pad(d []byte) []byte {
 	p := 16 - (len(d) % 16)
@@ -187,13 +274,13 @@ func pad(d []byte) []byte {
 	return d
 }
 
-func unpad(d []byte) []byte {
+func unpad(d []byte) ([]byte, error) {
 	if len(d) == 0 {
-		return d
+		return d, nil
 	}
 	p := int(d[len(d)-1])
 	if p > 16 || p == 0 {
-		return d
+		return nil, errors.New("padding error")
 	}
-	return d[:len(d)-p]
+	return d[:len(d)-p], nil
 }

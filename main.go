@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"embed"
 	"encoding/hex"
 	"fmt"
@@ -51,31 +50,6 @@ func addLog(category, message string) {
 	if len(serverLogs) > 200 {
 		serverLogs = serverLogs[1:]
 	}
-}
-
-// --- CRYPTO HELPERS ---
-
-func encrypt(key []byte, text string) string {
-	iv := make([]byte, 32)
-	rand.Read(iv)
-	padded := pad([]byte(text))
-	ciphered, _ := aesIgeEncrypt(key, iv, padded)
-	final := append(iv, ciphered...)
-	return hex.EncodeToString(final)
-}
-
-func decrypt(key []byte, hexText string) string {
-	data, err := hex.DecodeString(hexText)
-	if err != nil || len(data) < 32 {
-		return "[Error]"
-	}
-	iv := data[:32]
-	ciphered := data[32:]
-	plainPadded, err := aesIgeDecrypt(key, iv, ciphered)
-	if err != nil {
-		return "[Decryption Failed]"
-	}
-	return string(unpad(plainPadded))
 }
 
 func main() {
@@ -178,7 +152,12 @@ func main() {
 					mu.RUnlock()
 					if exist {
 						shared, _ := X25519(currentUser.PrivKey, sender.PubKey)
-						processed[i].Content = decrypt(shared[:], m.Content)
+						decrypted, err := decryptFull(shared[:], m.Content)
+						if err != nil {
+							processed[i].Content = "[Integritätsfehler]"
+						} else {
+							processed[i].Content = decrypted
+						}
 					}
 				}
 			}
@@ -256,10 +235,13 @@ func main() {
 				if exists && len(parts) > 1 {
 					addLog("CRYPTO", fmt.Sprintf("Initiating E2EE: %s -> %s", senderName, targetName))
 					shared, _ := X25519(sender.PrivKey, target.PubKey)
-					msg.Content = encrypt(shared[:], parts[1])
-					msg.Target = targetName
-					msg.IsEncrypted = true
-					addLog("MSG", "Encrypted private message stored.")
+					cipherText, err := encryptFull(shared[:], parts[1])
+					if err == nil {
+						msg.Content = cipherText
+						msg.Target = targetName
+						msg.IsEncrypted = true
+						addLog("MSG", "Durov-IGE E2EE stored.")
+					}
 				} else {
 					addLog("MSG", "Public message from "+senderName)
 				}
@@ -290,6 +272,7 @@ func main() {
 				mu.Lock()
 				defer mu.Unlock()
 				if name, ok := sessions[sessionID]; ok {
+					addLog("AUTH", "User logout: "+name)
 					delete(users, name)
 					delete(sessions, sessionID)
 				}
