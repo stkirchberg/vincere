@@ -13,7 +13,6 @@ body, html {
     overflow: hidden; 
 }
 
-
 .full-screen-wrapper {
     display: flex;
     flex-direction: column;
@@ -22,17 +21,20 @@ body, html {
 }
 
 header {
-    padding: 10px 20px;
+    padding-top: 20px;
+    padding-bottom: 15px;
+    padding-left: 30px;
+    text-align: center;
     border-bottom: 2px solid #0f0;
     background-color: #000;
 }
 
 h1 {
     margin: 0;
-    font-size: 1.5em;
+    font-size: 1.6em;
     letter-spacing: 5px;
+    font-weight: bolder;
 }
-
 
 .main-layout {
     display: grid;
@@ -41,7 +43,6 @@ h1 {
     overflow: hidden;
     background-color: #000;
 }
-
 
 .chat-section {
     display: flex;
@@ -56,10 +57,9 @@ h1 {
 }
 
 .input-window {
-    height: 120px;
+    height: 65px;
     border-top: 1px solid #030;
 }
-
 
 .log-panel {
     background-color: #050505;
@@ -83,7 +83,6 @@ h1 {
     border: none;
 }
 
-
 iframe {
     width: 100%;
     height: 100%;
@@ -95,7 +94,6 @@ iframe {
 iframe::-webkit-scrollbar {
     display: none;
 }
-
 
 .footer {
     display: flex;
@@ -131,7 +129,6 @@ iframe::-webkit-scrollbar {
     text-decoration: underline;
 }
 
-
 .login-overlay {
     display: flex;
     justify-content: center;
@@ -146,7 +143,6 @@ iframe::-webkit-scrollbar {
     border: 1px solid #030;
     background: #050505;
 }
-
 
 input[type="text"], .color-select {
     width: 100%;
@@ -178,7 +174,6 @@ input[type="text"]:focus, .color-select:focus {
     background-color: #fff;
 }
 
-
 .chat-box {
     padding: 15px;
     background-color: #000;
@@ -201,7 +196,55 @@ input[type="text"]:focus, .color-select:focus {
     font-style: italic;
 }
 
+.input-body {
+    background: #000;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    align-items: flex-end;
+}
 
+.input-form {
+    display: flex;
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
+.chat-input {
+    flex-grow: 1;
+    height: 45px;
+    background: #000;
+    color: #0f0;
+    border: 1px solid #030;
+    padding: 0 15px;
+    font-family: 'Courier New', monospace;
+    outline: none;
+    font-size: 1em;
+}
+
+.chat-input:focus {
+    border-color: #0f0;
+}
+
+.chat-submit {
+    height: 45px;
+    background: #030;
+    color: #0f0;
+    border: 1px solid #030;
+    border-left: none;
+    padding: 0 25px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.chat-submit:hover {
+    background: #0f0;
+    color: #000;
+}
 
 @media (max-width: 1024px) {
     .main-layout {

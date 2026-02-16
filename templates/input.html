@@ -3,11 +3,16 @@
 <head>
     <link rel="stylesheet" href="/static/style.css">
 </head>
-<body style="background: #000; overflow: hidden;">
-    <form action="/send" method="POST" style="display: flex; gap: 10px; padding: 10px;">
-        <input type="text" name="text" placeholder="Message or @User" autofocus autocomplete="off" 
-               style="flex-grow: 1; background: #000; color: #0f0; border: 1px solid #030; padding: 5px;">
-        <button type="submit" style="background: #030; color: #0f0; border: 1px solid #0f0; cursor: pointer;">SEND</button>
+<body class="input-body">
+    <form action="/send" method="POST" class="input-form">
+        <input type="text" 
+               name="text" 
+               placeholder="Message or @User" 
+               class="chat-input"
+               autofocus 
+               autocomplete="off" 
+               required>
+        <button type="submit" class="chat-submit">SEND</button>
     </form>
 </body>
 </html>
