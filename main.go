@@ -240,7 +240,7 @@ func main() {
 						msg.Content = cipherText
 						msg.Target = targetName
 						msg.IsEncrypted = true
-						addLog("MSG", "Durov-IGE E2EE stored.")
+						addLog("MSG", "IGE E2EE stored.")
 					}
 				} else {
 					addLog("MSG", "Public message from "+senderName)
