@@ -8,7 +8,7 @@ import (
 	"errors"
 )
 
-// --- S-BOX & TABLES ---
+// --- AES PREREQUISITES ---
 var sbox = [256]byte{
 	0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
 	0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -37,10 +37,9 @@ func init() {
 }
 
 func encryptFull(sharedSecret []byte, plaintext string) (string, error) {
-	salt := make([]byte, 16)
+	salt := make([]byte, 32)
 	rand.Read(salt)
 
-	// KDF: Make Key and IV from Secret + Salt
 	key, iv := deriveKeys(sharedSecret, salt)
 
 	paddedPlain := pad([]byte(plaintext))
@@ -50,79 +49,92 @@ func encryptFull(sharedSecret []byte, plaintext string) (string, error) {
 	}
 
 	// HMAC with Salt + Ciphertext
-	mac := calculateHMAC(key, append(salt, ciphertext...))
+	h := hmac.New(sha256.New, key)
+	h.Write(salt)
+	h.Write(ciphertext)
+	mac := h.Sum(nil)
 
-	// Salt(16) + MAC(32) + Ciphertext
+	// Paket: Salt(32) + MAC(32) + Ciphertext
 	final := append(salt, append(mac, ciphertext...)...)
 	return hex.EncodeToString(final), nil
 }
 
 func decryptFull(sharedSecret []byte, hexData string) (string, error) {
 	data, err := hex.DecodeString(hexData)
-	if err != nil || len(data) < 48 {
-		return "[Formatfehler]", nil
+	if err != nil || len(data) < 65 { // 32 Salt + 32 MAC + min 1 block
+		return "", errors.New("Format corrupt")
 	}
 
-	salt := data[:16]
-	receivedMac := data[16:48]
-	ciphertext := data[48:]
+	salt := data[:32]
+	receivedMac := data[32:64]
+	ciphertext := data[64:]
 
 	key, iv := deriveKeys(sharedSecret, salt)
 
-	// MAC
-	expectedMac := calculateHMAC(key, append(salt, ciphertext...))
+	h := hmac.New(sha256.New, key)
+	h.Write(salt)
+	h.Write(ciphertext)
+	expectedMac := h.Sum(nil)
+
 	if !hmac.Equal(receivedMac, expectedMac) {
-		return "[Integritätsfehler: Nachricht manipuliert]", nil
+		return "", errors.New("Integritätsfehler")
 	}
 
 	decryptedPadded, err := aesIgeDecrypt(key, iv, ciphertext)
 	if err != nil {
-		return "[Entschlüsselungsfehler]", nil
+		return "", err
 	}
 
 	unpadded, err := unpad(decryptedPadded)
 	if err != nil {
-		return "[Paddingfehler]", nil
+		return "", err
 	}
 
 	return string(unpadded), nil
 }
 
-// --- CRYPTO HELPERS ---
+// --- SECURE KEY DERIVATION ---
 
 func deriveKeys(sharedSecret, salt []byte) (key, iv []byte) {
-	h := hmac.New(sha256.New, salt)
-	h.Write(sharedSecret)
-	key = h.Sum(nil) // 32 Byte Key
+	hKey := hmac.New(sha256.New, salt)
+	hKey.Write(sharedSecret)
+	hKey.Write([]byte("AES_KEY_GEN"))
+	key = hKey.Sum(nil)
 
-	h.Write([]byte("vincere_ige_iv_extension"))
-	iv = h.Sum(nil) // 32 Byte IV
+	hIv := hmac.New(sha256.New, key)
+	hIv.Write(salt)
+	hIv.Write([]byte("IGE_IV_GEN"))
+	iv = hIv.Sum(nil)
+
 	return key, iv
 }
 
-func calculateHMAC(key, data []byte) []byte {
-	h := hmac.New(sha256.New, key)
-	h.Write(data)
-	return h.Sum(nil)
-}
-
-// --- CORE AES IGE LOGIC ---
+// --- AES IGE CORE ---
 
 func aesIgeEncrypt(key, iv, plaintext []byte) ([]byte, error) {
 	expanded := expandKey(key)
 	ciphertext := make([]byte, len(plaintext))
-	prevC, prevP := iv[:16], iv[16:32]
+
+	// IGE uses 32 Byte IV (16 for prevC, 16 for prevP)
+	prevC := make([]byte, 16)
+	prevP := make([]byte, 16)
+	copy(prevC, iv[0:16])
+	copy(prevP, iv[16:32])
 
 	for i := 0; i < len(plaintext); i += 16 {
 		chunk := make([]byte, 16)
 		for j := 0; j < 16; j++ {
 			chunk[j] = plaintext[i+j] ^ prevC[j]
 		}
-		enc := encryptBlock(expanded, chunk)
+
+		res := encryptBlock(expanded, chunk)
+
 		for j := 0; j < 16; j++ {
-			ciphertext[i+j] = enc[j] ^ prevP[j]
+			ciphertext[i+j] = res[j] ^ prevP[j]
 		}
-		prevC, prevP = ciphertext[i:i+16], plaintext[i:i+16]
+
+		copy(prevC, ciphertext[i:i+16])
+		copy(prevP, plaintext[i:i+16])
 	}
 	return ciphertext, nil
 }
@@ -130,23 +142,31 @@ func aesIgeEncrypt(key, iv, plaintext []byte) ([]byte, error) {
 func aesIgeDecrypt(key, iv, ciphertext []byte) ([]byte, error) {
 	expanded := expandKey(key)
 	plaintext := make([]byte, len(ciphertext))
-	prevC, prevP := iv[:16], iv[16:32]
+
+	prevC := make([]byte, 16)
+	prevP := make([]byte, 16)
+	copy(prevC, iv[0:16])
+	copy(prevP, iv[16:32])
 
 	for i := 0; i < len(ciphertext); i += 16 {
 		chunk := make([]byte, 16)
 		for j := 0; j < 16; j++ {
 			chunk[j] = ciphertext[i+j] ^ prevP[j]
 		}
-		dec := decryptBlock(expanded, chunk)
+
+		res := decryptBlock(expanded, chunk)
+
 		for j := 0; j < 16; j++ {
-			plaintext[i+j] = dec[j] ^ prevC[j]
+			plaintext[i+j] = res[j] ^ prevC[j]
 		}
-		prevP, prevC = plaintext[i:i+16], ciphertext[i:i+16]
+
+		copy(prevP, plaintext[i:i+16])
+		copy(prevC, ciphertext[i:i+16])
 	}
 	return plaintext, nil
 }
 
-// --- LOW LEVEL AES BLOCKS ---
+// --- AES LOW LEVEL ---
 
 func gfMul(a, b byte) byte {
 	var p byte
@@ -218,32 +238,26 @@ func decryptBlock(expandedKey, block []byte) []byte {
 	return state
 }
 
-// --- AES PRIMITIVES ---
-
 func addRoundKey(s, k []byte) {
 	for i := 0; i < 16; i++ {
 		s[i] ^= k[i]
 	}
 }
-
 func subBytes(s []byte, box [256]byte) {
 	for i := 0; i < 16; i++ {
 		s[i] = box[s[i]]
 	}
 }
-
 func shiftRows(s []byte) {
 	s[1], s[5], s[9], s[13] = s[5], s[9], s[13], s[1]
 	s[2], s[6], s[10], s[14] = s[10], s[14], s[2], s[6]
 	s[3], s[7], s[11], s[15] = s[15], s[3], s[7], s[11]
 }
-
 func invShiftRows(s []byte) {
 	s[5], s[9], s[13], s[1] = s[1], s[5], s[9], s[13]
 	s[10], s[14], s[2], s[6] = s[2], s[6], s[10], s[14]
 	s[15], s[3], s[7], s[11] = s[3], s[7], s[11], s[15]
 }
-
 func mixColumns(s []byte) {
 	for i := 0; i < 16; i += 4 {
 		a, b, c, d := s[i], s[i+1], s[i+2], s[i+3]
@@ -253,7 +267,6 @@ func mixColumns(s []byte) {
 		s[i+3] = gfMul(a, 3) ^ b ^ c ^ gfMul(d, 2)
 	}
 }
-
 func invMixColumns(s []byte) {
 	for i := 0; i < 16; i += 4 {
 		a, b, c, d := s[i], s[i+1], s[i+2], s[i+3]
@@ -263,24 +276,21 @@ func invMixColumns(s []byte) {
 		s[i+3] = gfMul(a, 11) ^ gfMul(b, 13) ^ gfMul(c, 9) ^ gfMul(d, 14)
 	}
 }
-
-// --- PADDING ---
-
 func pad(d []byte) []byte {
 	p := 16 - (len(d) % 16)
-	for i := 0; i < p; i++ {
-		d = append(d, byte(p))
+	padding := make([]byte, p)
+	for i := range padding {
+		padding[i] = byte(p)
 	}
-	return d
+	return append(d, padding...)
 }
-
 func unpad(d []byte) ([]byte, error) {
 	if len(d) == 0 {
 		return d, nil
 	}
 	p := int(d[len(d)-1])
-	if p > 16 || p == 0 {
-		return nil, errors.New("padding error")
+	if p > 16 || p == 0 || len(d) < p {
+		return nil, errors.New("Padding Error")
 	}
 	return d[:len(d)-p], nil
 }
