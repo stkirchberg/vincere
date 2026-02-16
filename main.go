@@ -38,8 +38,6 @@ var (
 	mu          sync.RWMutex
 )
 
-// --- LOGGING HELPER ---
-
 func addLog(category, message string) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -52,10 +50,25 @@ func addLog(category, message string) {
 	}
 }
 
+func encrypt(sharedSecret []byte, text string) string {
+	res, err := encryptFull(sharedSecret, text)
+	if err != nil {
+		return "[Encryption Error]"
+	}
+	return res
+}
+
+func decrypt(sharedSecret []byte, hexText string) string {
+	res, err := decryptFull(sharedSecret, hexText)
+	if err != nil {
+		return "[Integritätsfehler]"
+	}
+	return res
+}
+
 func main() {
 	tmpl := template.Must(template.ParseFS(content, "templates/*.html"))
 
-	// Cleanup-Routine
 	go func() {
 		for {
 			time.Sleep(1 * time.Minute)
@@ -75,7 +88,6 @@ func main() {
 
 	http.Handle("/static/", http.FileServer(http.FS(content)))
 
-	// INDEX
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		mu.RLock()
 		var currentUser *User
@@ -105,7 +117,6 @@ func main() {
 		})
 	})
 
-	// SERVER LOGS FRAME
 	http.HandleFunc("/server-logs", func(w http.ResponseWriter, r *http.Request) {
 		mu.RLock()
 		logsCopy := make([]string, len(serverLogs))
@@ -130,7 +141,6 @@ func main() {
 		fmt.Fprint(w, "</body></html>")
 	})
 
-	// MESSAGES FRAME
 	http.HandleFunc("/messages", func(w http.ResponseWriter, r *http.Request) {
 		mu.RLock()
 		var currentUser *User
@@ -140,31 +150,31 @@ func main() {
 			}
 		}
 
-		processed := make([]Message, len(chatHistory))
-		copy(processed, chatHistory)
+		rawHistory := make([]Message, len(chatHistory))
+		copy(rawHistory, chatHistory)
 		mu.RUnlock()
 
+		reversed := make([]Message, len(rawHistory))
+		for i := 0; i < len(rawHistory); i++ {
+			reversed[i] = rawHistory[len(rawHistory)-1-i]
+		}
+
 		if currentUser != nil {
-			for i, m := range processed {
+			for i, m := range reversed {
 				if m.IsEncrypted && m.Target == currentUser.Username {
 					mu.RLock()
 					sender, exist := users[m.Sender]
 					mu.RUnlock()
 					if exist {
 						shared, _ := X25519(currentUser.PrivKey, sender.PubKey)
-						decrypted, err := decryptFull(shared[:], m.Content)
-						if err != nil {
-							processed[i].Content = "[Integritätsfehler]"
-						} else {
-							processed[i].Content = decrypted
-						}
+						reversed[i].Content = decrypt(shared[:], m.Content)
 					}
 				}
 			}
 		}
 
 		tmpl.ExecuteTemplate(w, "messages.html", map[string]interface{}{
-			"Messages": processed,
+			"Messages": reversed,
 			"Username": func() string {
 				if currentUser != nil {
 					return currentUser.Username
@@ -174,12 +184,10 @@ func main() {
 		})
 	})
 
-	// INPUT FRAME
 	http.HandleFunc("/input", func(w http.ResponseWriter, r *http.Request) {
 		tmpl.ExecuteTemplate(w, "input.html", nil)
 	})
 
-	// LOGIN
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimSpace(r.FormValue("username"))
 		color := r.FormValue("color")
@@ -204,7 +212,6 @@ func main() {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
-	// SEND
 	http.HandleFunc("/send", func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_id")
 		if err != nil {
@@ -235,13 +242,10 @@ func main() {
 				if exists && len(parts) > 1 {
 					addLog("CRYPTO", fmt.Sprintf("Initiating E2EE: %s -> %s", senderName, targetName))
 					shared, _ := X25519(sender.PrivKey, target.PubKey)
-					cipherText, err := encryptFull(shared[:], parts[1])
-					if err == nil {
-						msg.Content = cipherText
-						msg.Target = targetName
-						msg.IsEncrypted = true
-						addLog("MSG", "IGE E2EE stored.")
-					}
+					msg.Content = encrypt(shared[:], parts[1])
+					msg.Target = targetName
+					msg.IsEncrypted = true
+					addLog("MSG", "IGE E2EE stored.")
 				} else {
 					addLog("MSG", "Public message from "+senderName)
 				}
