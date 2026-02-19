@@ -167,6 +167,7 @@ func main() {
 					mu.RUnlock()
 					if exist {
 						shared, _ := X25519(currentUser.PrivKey, sender.PubKey)
+						reversed[i].Sender = "[for you] " + m.Sender
 						reversed[i].Content = decrypt(shared[:], m.Content)
 					}
 				}
