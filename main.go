@@ -262,6 +262,23 @@ func main() {
 	})
 
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session_id")
+		if err == nil {
+			sid := cookie.Value
+
+			mu.Lock()
+			name, ok := sessions[sid]
+			if ok {
+				delete(users, name)
+				delete(sessions, sid)
+			}
+			mu.Unlock()
+
+			if ok {
+				addLog("AUTH", "User logout: "+name)
+			}
+		}
+
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_id",
 			Value:    "",
@@ -270,19 +287,6 @@ func main() {
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
 		})
-
-		if cookie, err := r.Cookie("session_id"); err == nil {
-			sid := cookie.Value
-			go func(sessionID string) {
-				mu.Lock()
-				defer mu.Unlock()
-				if name, ok := sessions[sessionID]; ok {
-					addLog("AUTH", "User logout: "+name)
-					delete(users, name)
-					delete(sessions, sessionID)
-				}
-			}(sid)
-		}
 
 		w.Header().Set("Connection", "close")
 		http.Redirect(w, r, "/", http.StatusSeeOther)
