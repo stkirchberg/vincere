@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rand"
 	"crypto/subtle"
-	"encoding/binary"
 	"errors"
 )
 
@@ -124,10 +123,10 @@ func GenerateKeyPair() (priv, pub [32]byte) {
 
 func decodeFE(in [32]byte) fe {
 	var out fe
-	out[0] = binary.LittleEndian.Uint64(in[0:8]) & 0x7ffffffffffff
-	out[1] = (binary.LittleEndian.Uint64(in[6:14]) >> 3) & 0x7ffffffffffff
-	out[2] = (binary.LittleEndian.Uint64(in[12:20]) >> 6) & 0x7ffffffffffff
-	out[3] = (binary.LittleEndian.Uint64(in[19:27]) >> 1) & 0x7ffffffffffff
+	out[0] = readUint64LittleEndian(in[0:8]) & 0x7ffffffffffff
+	out[1] = (readUint64LittleEndian(in[6:14]) >> 3) & 0x7ffffffffffff
+	out[2] = (readUint64LittleEndian(in[12:20]) >> 6) & 0x7ffffffffffff
+	out[3] = (readUint64LittleEndian(in[19:27]) >> 1) & 0x7ffffffffffff
 	last := uint64(in[25]) | uint64(in[26])<<8 | uint64(in[27])<<16 |
 		uint64(in[28])<<24 | uint64(in[29])<<32 | uint64(in[30])<<40 |
 		uint64(in[31])<<48
@@ -137,9 +136,9 @@ func decodeFE(in [32]byte) fe {
 
 func encodeFE(in fe) [32]byte {
 	var out [32]byte
-	binary.LittleEndian.PutUint64(out[0:8], in[0]|(in[1]<<51))
-	binary.LittleEndian.PutUint64(out[8:16], (in[1]>>13)|(in[2]<<38))
-	binary.LittleEndian.PutUint64(out[16:24], (in[2]>>26)|(in[3]<<25))
-	binary.LittleEndian.PutUint64(out[24:32], (in[3]>>39)|(in[4]<<12))
+	putUint64LittleEndian(out[0:8], in[0]|(in[1]<<51))
+	putUint64LittleEndian(out[8:16], (in[1]>>13)|(in[2]<<38))
+	putUint64LittleEndian(out[16:24], (in[2]>>26)|(in[3]<<25))
+	putUint64LittleEndian(out[24:32], (in[3]>>39)|(in[4]<<12))
 	return out
 }
