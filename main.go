@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 )
@@ -100,7 +99,7 @@ func main() {
 		for _, u := range users {
 			onlineNames = append(onlineNames, u.Username)
 		}
-		onlineString := strings.Join(onlineNames, ", ")
+		onlineString := myJoin(onlineNames, ", ")
 
 		var uname, ucol string
 		if currentUser != nil {
@@ -126,13 +125,13 @@ func main() {
 		fmt.Fprint(w, "<html><head><meta http-equiv='refresh' content='2'><style>body{background:#000;color:#0f0;font-family:monospace;font-size:12px;margin:10px;overflow-x:hidden;} .crypto{color:#f0f;} .auth{color:#0af;} .msg{color:#ff0;}</style></head><body>")
 		for _, l := range logsCopy {
 			class := ""
-			if strings.Contains(l, "CRYPTO") {
+			if myContains(l, "CRYPTO") {
 				class = "class='crypto'"
 			}
-			if strings.Contains(l, "AUTH") {
+			if myContains(l, "AUTH") {
 				class = "class='auth'"
 			}
-			if strings.Contains(l, "MSG") {
+			if myContains(l, "MSG") {
 				class = "class='msg'"
 			}
 			fmt.Fprintf(w, "<div %s>%s</div>", class, l)
@@ -189,7 +188,7 @@ func main() {
 	})
 
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
-		name := strings.TrimSpace(r.FormValue("username"))
+		name := myTrimSpace(r.FormValue("username"))
 		color := r.FormValue("color")
 		if name != "" {
 			addLog("AUTH", "Generating new X25519 keypair for user: "+name)
@@ -227,13 +226,13 @@ func main() {
 			return
 		}
 
-		text := strings.TrimSpace(r.FormValue("text"))
+		text := myTrimSpace(r.FormValue("text"))
 		if text != "" {
 			msg := Message{Sender: senderName, Content: text, Timestamp: time.Now(), Target: "all", Color: sender.Color}
 
-			if strings.HasPrefix(text, "@") {
-				parts := strings.SplitN(text, " ", 2)
-				targetName := strings.TrimPrefix(parts[0], "@")
+			if myHasPrefix(text, "@") {
+				parts := mySplitN(text, " ", 2)
+				targetName := myTrimPrefix(parts[0], "@")
 
 				mu.RLock()
 				target, exists := users[targetName]
@@ -291,7 +290,7 @@ func main() {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
-	fmt.Println("Vincere Messenger running.")
+	fmt.Println("vincere messenger running.")
 	fmt.Println("Address: http://127.0.0.1:8080")
 	addLog("SYSTEM", "Server started on :8080")
 	http.ListenAndServe(":8080", nil)
