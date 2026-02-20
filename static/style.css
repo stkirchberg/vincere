@@ -22,19 +22,45 @@ body, html {
 }
 
 header {
-    padding-top: 20px;
-    padding-bottom: 15px;
-    padding-left: 30px;
-    text-align: center;
+    padding-top: 10px;
+    padding-bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     border-bottom: 2px solid #0f0;
     background-color: #000;
+    min-height: 80px;
+    position: relative;
+}
+
+.header-logo {
+    height: 70px;
+    width: auto;
+    display: block;
+    position: absolute;
+    transform: translateX(-100%); 
+    left: calc(50% - 100px);
+    bottom: 0;
+    margin-bottom: 0; 
 }
 
 h1 {
     margin: 0;
+    padding: 0;
     font-size: 1.6em;
     letter-spacing: 5px;
     font-weight: bolder;
+    color: #0f0;
+}
+
+h1 {
+    margin: 0;
+    padding: 0;
+    font-size: 1.6em;
+    letter-spacing: 5px;
+    font-weight: bolder;
+    flex-grow: 1;
+    text-align: center;
 }
 
 .main-layout {
