@@ -39,7 +39,7 @@ header {
     display: block;
     position: absolute;
     transform: translateX(-100%); 
-    left: calc(50% - 100px);
+    left: calc(50% - 90px);
     bottom: 0;
     margin-bottom: 0; 
 }
