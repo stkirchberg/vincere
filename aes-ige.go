@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 )
 
@@ -56,11 +55,11 @@ func encryptFull(sharedSecret []byte, plaintext string) (string, error) {
 
 	// Paket: Salt(32) + MAC(32) + Ciphertext
 	final := append(salt, append(mac, ciphertext...)...)
-	return hex.EncodeToString(final), nil
+	return myHexEncode(final), nil
 }
 
 func decryptFull(sharedSecret []byte, hexData string) (string, error) {
-	data, err := hex.DecodeString(hexData)
+	data, err := myHexDecode(hexData)
 	if err != nil || len(data) < 65 { // 32 Salt + 32 MAC + min 1 block
 		return "", errors.New("Format corrupt")
 	}

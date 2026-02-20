@@ -2,7 +2,6 @@ package main
 
 import (
 	"embed"
-	"encoding/hex"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -203,7 +202,7 @@ func main() {
 				PubKey:   pub,
 				Color:    color,
 			}
-			sid := hex.EncodeToString(priv[:16])
+			sid := myHexEncode(priv[:16])
 			sessions[sid] = name
 			mu.Unlock()
 
