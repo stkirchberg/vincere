@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"errors"
 )
 
 type fe [5]uint64
@@ -105,7 +104,7 @@ func X25519(scalar, basePoint [32]byte) ([32]byte, error) {
 
 	var zero [32]byte
 	if myConstantTimeCompare(res[:], zero[:]) == 1 {
-		return [32]byte{}, errors.New("low-order point")
+		return [32]byte{}, myNewError("low-order point")
 	}
 	return res, nil
 }

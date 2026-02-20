@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"errors"
 )
 
 // --- AES PREREQUISITES ---
@@ -61,7 +60,7 @@ func encryptFull(sharedSecret []byte, plaintext string) (string, error) {
 func decryptFull(sharedSecret []byte, hexData string) (string, error) {
 	data, err := myHexDecode(hexData)
 	if err != nil || len(data) < 65 { // 32 Salt + 32 MAC + min 1 block
-		return "", errors.New("Format corrupt")
+		return "", myNewError("Format corrupt")
 	}
 
 	salt := data[:32]
@@ -76,7 +75,7 @@ func decryptFull(sharedSecret []byte, hexData string) (string, error) {
 	expectedMac := h.Sum(nil)
 
 	if !hmac.Equal(receivedMac, expectedMac) {
-		return "", errors.New("Integritätsfehler")
+		return "", myNewError("Integritätsfehler")
 	}
 
 	decryptedPadded, err := aesIgeDecrypt(key, iv, ciphertext)
@@ -289,7 +288,7 @@ func unpad(d []byte) ([]byte, error) {
 	}
 	p := int(d[len(d)-1])
 	if p > 16 || p == 0 || len(d) < p {
-		return nil, errors.New("Padding Error")
+		return nil, myNewError("Padding Error")
 	}
 	return d[:len(d)-p], nil
 }
