@@ -11,6 +11,7 @@ body, html {
     font-family: 'Courier New', monospace;
     line-height: 1.2;
     overflow: hidden; 
+    scroll-behavior: smooth;
 }
 
 .full-screen-wrapper {
