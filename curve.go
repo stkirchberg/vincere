@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"crypto/subtle"
 	"errors"
 )
 
@@ -105,7 +104,7 @@ func X25519(scalar, basePoint [32]byte) ([32]byte, error) {
 	res := encodeFE(x2)
 
 	var zero [32]byte
-	if subtle.ConstantTimeCompare(res[:], zero[:]) == 1 {
+	if myConstantTimeCompare(res[:], zero[:]) == 1 {
 		return [32]byte{}, errors.New("low-order point")
 	}
 	return res, nil
