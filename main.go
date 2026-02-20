@@ -1,8 +1,9 @@
 package main
 
 import (
-	"crypto/ed25519"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"embed"
 	"fmt"
 	"html/template"
@@ -18,8 +19,6 @@ type User struct {
 	Username string
 	PrivKey  [32]byte
 	PubKey   [32]byte
-	SignPriv [64]byte
-	SignPub  [32]byte
 	Color    string
 }
 
@@ -198,23 +197,13 @@ func main() {
 
 		if name != "" {
 			addLog("AUTH", "Generating X25519 keypair for: "+name)
-			privX, pubX := GenerateKeyPair()
-
-			addLog("AUTH", "Generating Ed25519 signature keys for: "+name)
-			pubS, privS, err := ed25519.GenerateKey(rand.Reader)
-			if err != nil {
-				addLog("ERROR", "Failed to generate signature keys")
-				http.Error(w, "Internal Server Error", 500)
-				return
-			}
+			priv, pub := GenerateKeyPair()
 
 			mu.Lock()
 			users[name] = &User{
 				Username: name,
-				PrivKey:  privX,
-				PubKey:   pubX,
-				SignPriv: [64]byte(privS),
-				SignPub:  [32]byte(pubS),
+				PrivKey:  priv,
+				PubKey:   pub,
 				Color:    color,
 			}
 
@@ -289,8 +278,13 @@ func main() {
 				addLog("MSG", "Public message from "+senderName)
 			}
 
-			sig := ed25519.Sign(sender.SignPriv[:], []byte(msg.Content))
-			msg.Signature = myHexEncode(sig)
+			var base [32]byte
+			base[0] = 9
+			proof, _ := X25519(sender.PrivKey, base)
+
+			h := hmac.New(sha256.New, proof[:])
+			h.Write([]byte(msg.Content))
+			msg.Signature = myHexEncode(h.Sum(nil))
 
 			mu.Lock()
 			chatHistory = append(chatHistory, msg)
