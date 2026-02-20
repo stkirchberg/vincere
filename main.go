@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"embed"
 	"fmt"
 	"html/template"
@@ -201,7 +202,11 @@ func main() {
 				PubKey:   pub,
 				Color:    color,
 			}
-			sid := myHexEncode(priv[:16])
+			sessionBytes := make([]byte, 32)
+			if _, err := rand.Read(sessionBytes); err != nil {
+				panic("generating failed")
+			}
+			sid := myHexEncode(sessionBytes)
 			sessions[sid] = name
 			mu.Unlock()
 
