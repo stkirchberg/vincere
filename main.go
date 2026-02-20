@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/ed25519"
 	"crypto/rand"
 	"embed"
 	"fmt"
@@ -17,6 +18,8 @@ type User struct {
 	Username string
 	PrivKey  [32]byte
 	PubKey   [32]byte
+	SignPriv [64]byte
+	SignPub  [32]byte
 	Color    string
 }
 
@@ -27,6 +30,7 @@ type Message struct {
 	Timestamp   time.Time
 	IsEncrypted bool
 	Color       string
+	Signature   string
 }
 
 var (
@@ -191,27 +195,47 @@ func main() {
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		name := myTrimSpace(r.FormValue("username"))
 		color := r.FormValue("color")
+
 		if name != "" {
-			addLog("AUTH", "Generating new X25519 keypair for user: "+name)
-			priv, pub := GenerateKeyPair()
+			addLog("AUTH", "Generating X25519 keypair for: "+name)
+			privX, pubX := GenerateKeyPair()
+
+			addLog("AUTH", "Generating Ed25519 signature keys for: "+name)
+			pubS, privS, err := ed25519.GenerateKey(rand.Reader)
+			if err != nil {
+				addLog("ERROR", "Failed to generate signature keys")
+				http.Error(w, "Internal Server Error", 500)
+				return
+			}
 
 			mu.Lock()
 			users[name] = &User{
 				Username: name,
-				PrivKey:  priv,
-				PubKey:   pub,
+				PrivKey:  privX,
+				PubKey:   pubX,
+				SignPriv: [64]byte(privS),
+				SignPub:  [32]byte(pubS),
 				Color:    color,
 			}
+
 			sessionBytes := make([]byte, 32)
 			if _, err := rand.Read(sessionBytes); err != nil {
-				panic("generating failed")
+				mu.Unlock()
+				panic("CSPRNG failure: generating session ID failed")
 			}
 			sid := myHexEncode(sessionBytes)
 			sessions[sid] = name
 			mu.Unlock()
 
-			addLog("AUTH", "Session created for "+name)
-			http.SetCookie(w, &http.Cookie{Name: "session_id", Value: sid, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode})
+			addLog("AUTH", "Session created and keys stored for "+name)
+
+			http.SetCookie(w, &http.Cookie{
+				Name:     "session_id",
+				Value:    sid,
+				Path:     "/",
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+			})
 		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
@@ -222,10 +246,12 @@ func main() {
 			http.Redirect(w, r, "/input", http.StatusSeeOther)
 			return
 		}
+
 		mu.RLock()
 		senderName := sessions[cookie.Value]
 		sender, ok := users[senderName]
 		mu.RUnlock()
+
 		if !ok {
 			http.Redirect(w, r, "/input", http.StatusSeeOther)
 			return
@@ -233,7 +259,13 @@ func main() {
 
 		text := myTrimSpace(r.FormValue("text"))
 		if text != "" {
-			msg := Message{Sender: senderName, Content: text, Timestamp: time.Now(), Target: "all", Color: sender.Color}
+			msg := Message{
+				Sender:    senderName,
+				Content:   text,
+				Timestamp: time.Now(),
+				Target:    "all",
+				Color:     sender.Color,
+			}
 
 			if myHasPrefix(text, "@") {
 				parts := mySplitN(text, " ", 2)
@@ -256,6 +288,9 @@ func main() {
 			} else {
 				addLog("MSG", "Public message from "+senderName)
 			}
+
+			sig := ed25519.Sign(sender.SignPriv[:], []byte(msg.Content))
+			msg.Signature = myHexEncode(sig)
 
 			mu.Lock()
 			chatHistory = append(chatHistory, msg)
