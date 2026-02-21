@@ -156,24 +156,42 @@ func main() {
 		copy(rawHistory, chatHistory)
 		mu.RUnlock()
 
-		reversed := make([]Message, len(rawHistory))
-		for i := 0; i < len(rawHistory); i++ {
-			reversed[i] = rawHistory[len(rawHistory)-1-i]
-		}
-
-		if currentUser != nil {
-			for i, m := range reversed {
-				if m.IsEncrypted && m.Target == currentUser.Username {
-					mu.RLock()
-					sender, exist := users[m.Sender]
-					mu.RUnlock()
-					if exist {
-						shared, _ := X25519(currentUser.PrivKey, sender.PubKey)
-						reversed[i].Sender = m.Sender
-						reversed[i].Content = decrypt(shared[:], m.Content)
-					}
+		var filtered []Message
+		for _, m := range rawHistory {
+			show := false
+			if !m.IsEncrypted {
+				show = true
+			} else if currentUser != nil {
+				if m.Sender == currentUser.Username || m.Target == currentUser.Username {
+					show = true
 				}
 			}
+
+			if show {
+				if m.IsEncrypted && currentUser != nil {
+					var partnerName string
+					if m.Sender == currentUser.Username {
+						partnerName = m.Target
+					} else {
+						partnerName = m.Sender
+					}
+
+					mu.RLock()
+					partner, exists := users[partnerName]
+					mu.RUnlock()
+
+					if exists {
+						shared, _ := X25519(currentUser.PrivKey, partner.PubKey)
+						m.Content = decrypt(shared[:], m.Content)
+					}
+				}
+				filtered = append(filtered, m)
+			}
+		}
+
+		reversed := make([]Message, len(filtered))
+		for i := 0; i < len(filtered); i++ {
+			reversed[i] = filtered[len(filtered)-1-i]
 		}
 
 		tmpl.ExecuteTemplate(w, "messages.html", map[string]interface{}{
