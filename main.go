@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha256"
 	"embed"
 	"fmt"
 	"html/template"
@@ -300,7 +299,7 @@ func main() {
 			base[0] = 9
 			proof, _ := X25519(sender.PrivKey, base)
 
-			h := hmac.New(sha256.New, proof[:])
+			h := hmac.New(NewSHA256, proof[:])
 			h.Write([]byte(msg.Content))
 			msg.Signature = myHexEncode(h.Sum(nil))
 
