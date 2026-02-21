@@ -94,3 +94,9 @@ To upgrade this project to industry standards, follow these steps:
 
 1. **Replace Curve Arithmetic**: Use `golang.org/x/crypto/curve25519`.
 2. **Use Authenticated Encryption**: Replace the experimental mode with `crypto/cipher.NewGCM` for AEAD security.
+
+---
+
+### More questions? 
+
+Look at the code. Dumbass. 
