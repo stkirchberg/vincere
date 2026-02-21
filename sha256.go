@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"hash"
 )
 
@@ -96,13 +95,13 @@ func (d *Digest) checkSum() [Size]byte {
 	}
 	d.Write(padding[:padLen])
 
-	lenInBits := lenInBytes << 3
-	binary.BigEndian.PutUint64(padding[:8], lenInBits)
+	lo := lenInBytes << 3
+	putUint64BigEndian(padding[:8], lo)
 	d.Write(padding[:8])
 
 	var digest [Size]byte
 	for i, s := range d.h {
-		binary.BigEndian.PutUint32(digest[i*4:], s)
+		putUint32BigEndian(digest[i*4:], s)
 	}
 	return digest
 }
@@ -112,7 +111,7 @@ func block(d *Digest, p []byte) {
 	for len(p) >= BlockSize {
 		for i := 0; i < 16; i++ {
 			j := i * 4
-			w[i] = binary.BigEndian.Uint32(p[j : j+4])
+			w[i] = readUint32BigEndian(p[j : j+4])
 		}
 		for i := 16; i < 64; i++ {
 			v15 := w[i-15]
@@ -157,6 +156,19 @@ type hmacHash struct {
 	outer      hash.Hash
 }
 
+func (h *hmacHash) Zero() {
+	for i := range h.ipad {
+		h.ipad[i] = 0
+		h.opad[i] = 0
+	}
+	if d, ok := h.inner.(*Digest); ok {
+		d.Zero()
+	}
+	if d, ok := h.outer.(*Digest); ok {
+		d.Zero()
+	}
+}
+
 func NewHMAC(key []byte) hash.Hash {
 	h := &hmacHash{
 		inner: NewSHA256(),
@@ -166,6 +178,9 @@ func NewHMAC(key []byte) hash.Hash {
 		sum := NewSHA256()
 		sum.Write(key)
 		key = sum.Sum(nil)
+		if d, ok := sum.(*Digest); ok {
+			d.Zero()
+		}
 	}
 	copy(h.ipad[:], key)
 	copy(h.opad[:], key)
@@ -186,13 +201,15 @@ func (h *hmacHash) Reset() {
 }
 
 func (h *hmacHash) Sum(in []byte) []byte {
-	origLen := len(in)
-	in = h.inner.Sum(in)
-	innerSum := in[origLen:]
+	innerSum := h.inner.Sum(nil)
 	h.outer.Reset()
 	h.outer.Write(h.opad[:])
 	h.outer.Write(innerSum)
-	return h.outer.Sum(in[:origLen])
+	res := h.outer.Sum(in)
+	for i := range innerSum {
+		innerSum[i] = 0
+	}
+	return res
 }
 
 var _K = []uint32{
