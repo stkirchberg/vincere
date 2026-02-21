@@ -1,7 +1,7 @@
 package main
 
 import (
-	"math/bits"
+	"hash"
 )
 
 const (
@@ -16,7 +16,11 @@ type Digest struct {
 	len uint64
 }
 
-func NewSHA256() *Digest {
+func rotr32(x uint32, n uint) uint32 {
+	return (x >> n) | (x << (32 - n))
+}
+
+func NewSHA256() hash.Hash {
 	d := new(Digest)
 	d.Reset()
 	return d
@@ -59,8 +63,8 @@ func (d *Digest) Write(p []byte) (nn int, err error) {
 
 func (d *Digest) Sum(in []byte) []byte {
 	tmp := *d
-	hash := tmp.checkSum()
-	return append(in, hash[:]...)
+	hashVal := tmp.checkSum()
+	return append(in, hashVal[:]...)
 }
 
 func (d *Digest) checkSum() [Size]byte {
@@ -98,19 +102,19 @@ func block(d *Digest, p []byte) {
 		}
 		for i := 16; i < 64; i++ {
 			v15 := w[i-15]
-			s0 := bits.RotateRight32(v15, 7) ^ bits.RotateRight32(v15, 18) ^ (v15 >> 3)
+			s0 := rotr32(v15, 7) ^ rotr32(v15, 18) ^ (v15 >> 3)
 			v2 := w[i-2]
-			s1 := bits.RotateRight32(v2, 17) ^ bits.RotateRight32(v2, 19) ^ (v2 >> 10)
+			s1 := rotr32(v2, 17) ^ rotr32(v2, 19) ^ (v2 >> 10)
 			w[i] = s1 + w[i-7] + s0 + w[i-16]
 		}
 
 		a, b, c, dVal, e, f, g, h := d.h[0], d.h[1], d.h[2], d.h[3], d.h[4], d.h[5], d.h[6], d.h[7]
 
 		for i := 0; i < 64; i++ {
-			s1 := bits.RotateRight32(e, 6) ^ bits.RotateRight32(e, 11) ^ bits.RotateRight32(e, 25)
+			s1 := rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25)
 			ch := (e & f) ^ (^e & g)
 			t1 := h + s1 + ch + _K[i] + w[i]
-			s0 := bits.RotateRight32(a, 2) ^ bits.RotateRight32(a, 13) ^ bits.RotateRight32(a, 22)
+			s0 := rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22)
 			maj := (a & b) ^ (a & c) ^ (b & c)
 			t2 := s0 + maj
 
