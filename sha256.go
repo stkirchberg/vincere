@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"hash"
 )
 
@@ -30,6 +31,20 @@ func (d *Digest) Reset() {
 	d.h = [8]uint32{
 		0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
 		0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+	}
+	for i := range d.x {
+		d.x[i] = 0
+	}
+	d.nx = 0
+	d.len = 0
+}
+
+func (d *Digest) Zero() {
+	for i := range d.h {
+		d.h[i] = 0
+	}
+	for i := range d.x {
+		d.x[i] = 0
 	}
 	d.nx = 0
 	d.len = 0
@@ -64,31 +79,30 @@ func (d *Digest) Write(p []byte) (nn int, err error) {
 func (d *Digest) Sum(in []byte) []byte {
 	tmp := *d
 	hashVal := tmp.checkSum()
+	tmp.Zero()
 	return append(in, hashVal[:]...)
 }
 
 func (d *Digest) checkSum() [Size]byte {
-	l := d.len
-	var tmp [64]byte
-	tmp[0] = 0x80
-	if l%64 < 56 {
-		d.Write(tmp[0 : 56-l%64])
-	} else {
-		d.Write(tmp[0 : 120-l%64])
-	}
+	lenInBytes := d.len
+	padding := [128]byte{}
+	padding[0] = 0x80
 
-	t := l << 3
-	for i := uint(0); i < 8; i++ {
-		tmp[i] = byte(t >> (56 - i*8))
+	var padLen int
+	if lenInBytes%64 < 56 {
+		padLen = int(56 - lenInBytes%64)
+	} else {
+		padLen = int(120 - lenInBytes%64)
 	}
-	d.Write(tmp[0:8])
+	d.Write(padding[:padLen])
+
+	lenInBits := lenInBytes << 3
+	binary.BigEndian.PutUint64(padding[:8], lenInBits)
+	d.Write(padding[:8])
 
 	var digest [Size]byte
 	for i, s := range d.h {
-		digest[i*4] = byte(s >> 24)
-		digest[i*4+1] = byte(s >> 16)
-		digest[i*4+2] = byte(s >> 8)
-		digest[i*4+3] = byte(s)
+		binary.BigEndian.PutUint32(digest[i*4:], s)
 	}
 	return digest
 }
@@ -98,7 +112,7 @@ func block(d *Digest, p []byte) {
 	for len(p) >= BlockSize {
 		for i := 0; i < 16; i++ {
 			j := i * 4
-			w[i] = uint32(p[j])<<24 | uint32(p[j+1])<<16 | uint32(p[j+2])<<8 | uint32(p[j+3])
+			w[i] = binary.BigEndian.Uint32(p[j : j+4])
 		}
 		for i := 16; i < 64; i++ {
 			v15 := w[i-15]
@@ -132,6 +146,53 @@ func block(d *Digest, p []byte) {
 		d.h[7] += h
 		p = p[BlockSize:]
 	}
+	for i := range w {
+		w[i] = 0
+	}
+}
+
+type hmacHash struct {
+	opad, ipad [BlockSize]byte
+	inner      hash.Hash
+	outer      hash.Hash
+}
+
+func NewHMAC(key []byte) hash.Hash {
+	h := &hmacHash{
+		inner: NewSHA256(),
+		outer: NewSHA256(),
+	}
+	if len(key) > BlockSize {
+		sum := NewSHA256()
+		sum.Write(key)
+		key = sum.Sum(nil)
+	}
+	copy(h.ipad[:], key)
+	copy(h.opad[:], key)
+	for i := range h.ipad {
+		h.ipad[i] ^= 0x36
+		h.opad[i] ^= 0x5c
+	}
+	h.inner.Write(h.ipad[:])
+	return h
+}
+
+func (h *hmacHash) Write(p []byte) (int, error) { return h.inner.Write(p) }
+func (h *hmacHash) Size() int                   { return Size }
+func (h *hmacHash) BlockSize() int              { return BlockSize }
+func (h *hmacHash) Reset() {
+	h.inner.Reset()
+	h.inner.Write(h.ipad[:])
+}
+
+func (h *hmacHash) Sum(in []byte) []byte {
+	origLen := len(in)
+	in = h.inner.Sum(in)
+	innerSum := in[origLen:]
+	h.outer.Reset()
+	h.outer.Write(h.opad[:])
+	h.outer.Write(innerSum)
+	return h.outer.Sum(in[:origLen])
 }
 
 var _K = []uint32{
