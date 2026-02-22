@@ -222,7 +222,7 @@ func CheckMAC(message, messageMAC, key []byte) bool {
 	h := NewHMAC(key)
 	h.Write(message)
 	expectedMAC := h.Sum(nil)
-	return ConstantTimeCompare(expectedMAC, messageMAC) == 1
+	return myConstantTimeCompare(expectedMAC, messageMAC) == 1
 }
 
 var _K = []uint32{
