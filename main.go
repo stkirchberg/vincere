@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 //go:embed templates/* static/*
@@ -70,6 +72,7 @@ func decrypt(sharedSecret []byte, hexText string) string {
 func main() {
 	tmpl := template.Must(template.ParseFS(content, "templates/*.html"))
 
+	// Cleanup Routine
 	go func() {
 		for {
 			time.Sleep(1 * time.Minute)
@@ -212,38 +215,79 @@ func main() {
 		name := myTrimSpace(r.FormValue("username"))
 		color := r.FormValue("color")
 
-		if name != "" {
-			addLog("AUTH", "Generating X25519 keypair for: "+name)
+		if name == "" {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+
+		if name == "stk" {
+			tmpl.ExecuteTemplate(w, "admin_login.html", map[string]string{
+				"Color": color,
+			})
+			return
+		}
+
+		addLog("AUTH", "Generating X25519 keypair for: "+name)
+		priv, pub := GenerateKeyPair()
+
+		mu.Lock()
+		users[name] = &User{
+			Username: name,
+			PrivKey:  priv,
+			PubKey:   pub,
+			Color:    color,
+		}
+
+		sessionBytes := make([]byte, 32)
+		if _, err := rand.Read(sessionBytes); err != nil {
+			mu.Unlock()
+			panic("CSPRNG failure")
+		}
+		sid := myHexEncode(sessionBytes)
+		sessions[sid] = name
+		mu.Unlock()
+
+		addLog("AUTH", "Session created for "+name)
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_id",
+			Value:    sid,
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	})
+
+	http.HandleFunc("/login-admin", func(w http.ResponseWriter, r *http.Request) {
+		pass := r.FormValue("password")
+		color := r.FormValue("color")
+
+		adminPassHash := "$2a$12$ajTLsLTyzkF376/Jrme28O.5GlvFMR3qEGVU4GnSE0iiOFTHO9Ka."
+
+		err := bcrypt.CompareHashAndPassword([]byte(adminPassHash), []byte(pass))
+
+		if err == nil {
+			name := "stk"
+			addLog("AUTH", "Admin verification successful for: "+name)
 			priv, pub := GenerateKeyPair()
 
 			mu.Lock()
-			users[name] = &User{
-				Username: name,
-				PrivKey:  priv,
-				PubKey:   pub,
-				Color:    color,
-			}
-
+			users[name] = &User{Username: name, PrivKey: priv, PubKey: pub, Color: color}
 			sessionBytes := make([]byte, 32)
-			if _, err := rand.Read(sessionBytes); err != nil {
-				mu.Unlock()
-				panic("CSPRNG failure: generating session ID failed")
-			}
+			rand.Read(sessionBytes)
 			sid := myHexEncode(sessionBytes)
 			sessions[sid] = name
 			mu.Unlock()
 
-			addLog("AUTH", "Session created and keys stored for "+name)
-
 			http.SetCookie(w, &http.Cookie{
-				Name:     "session_id",
-				Value:    sid,
-				Path:     "/",
-				HttpOnly: true,
-				SameSite: http.SameSiteLaxMode,
+				Name: "session_id", Value: sid, Path: "/", HttpOnly: true,
 			})
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+		} else {
+			addLog("AUTH", "FAILED Admin login attempt!")
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 		}
-		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
 	http.HandleFunc("/send", func(w http.ResponseWriter, r *http.Request) {
