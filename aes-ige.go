@@ -74,7 +74,7 @@ func decryptFull(sharedSecret []byte, hexData string) (string, error) {
 	expectedMac := h.Sum(nil)
 
 	if !hmac.Equal(receivedMac, expectedMac) {
-		return "", myNewError("Integritätsfehler")
+		return "", myNewError("Integrity error")
 	}
 
 	decryptedPadded, err := aesIgeDecrypt(key, iv, ciphertext)
