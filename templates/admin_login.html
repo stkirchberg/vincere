@@ -4,12 +4,32 @@
     <link rel="stylesheet" href="/static/style.css">
     <title>vincere - Admin Auth</title>
 </head>
-<body class="login-overlay">
-    <form action="/login-admin" method="POST" class="login-form">
-        <p>Confirm identity: <strong>stk</strong></p>
-        <input type="password" name="password" placeholder="Enter password" required autofocus>
-        <input type="hidden" name="color" value="{{.Color}}"> 
-        <button type="submit" class="btn-login">Verify</button>
-    </form>
+
+<body>
+    <div class="full-screen-wrapper">
+        <div class="login-overlay">
+            <div class="admin-box">
+                <form action="/login-admin" method="POST" class="login-form">
+                    <div class="admin-identity">
+                        [ IDENTITY CONFIRMED: <strong>stk</strong> ]
+                    </div>
+                    
+                    <input type="password" 
+                           name="password" 
+                           class="password-input" 
+                           placeholder="ENTER ACCESS KEY" 
+                           required 
+                           autofocus>
+
+                    <input type="hidden" name="color" value="{{.Color}}"> 
+                    
+                    <button type="submit" class="btn-login">VERIFY CREDENTIALS</button>
+                </form>
+                <div style="margin-top: 15px;">
+                    <a href="/" style="color: #555; font-family: monospace; text-decoration: none; font-size: 0.8rem;">[ CANCEL ]</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
