@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha256"
 )
 
 // --- AES PREREQUISITES ---
@@ -47,7 +46,7 @@ func encryptFull(sharedSecret []byte, plaintext string) (string, error) {
 	}
 
 	// HMAC with Salt + Ciphertext
-	h := hmac.New(sha256.New, key)
+	h := hmac.New(NewSHA256, key)
 	h.Write(salt)
 	h.Write(ciphertext)
 	mac := h.Sum(nil)
@@ -69,7 +68,7 @@ func decryptFull(sharedSecret []byte, hexData string) (string, error) {
 
 	key, iv := deriveKeys(sharedSecret, salt)
 
-	h := hmac.New(sha256.New, key)
+	h := hmac.New(NewSHA256, key)
 	h.Write(salt)
 	h.Write(ciphertext)
 	expectedMac := h.Sum(nil)
@@ -94,12 +93,12 @@ func decryptFull(sharedSecret []byte, hexData string) (string, error) {
 // --- SECURE KEY DERIVATION ---
 
 func deriveKeys(sharedSecret, salt []byte) (key, iv []byte) {
-	hKey := hmac.New(sha256.New, salt)
+	hKey := hmac.New(NewSHA256, salt)
 	hKey.Write(sharedSecret)
 	hKey.Write([]byte("AES_KEY_GEN"))
 	key = hKey.Sum(nil)
 
-	hIv := hmac.New(sha256.New, key)
+	hIv := hmac.New(NewSHA256, key)
 	hIv.Write(salt)
 	hIv.Write([]byte("IGE_IV_GEN"))
 	iv = hIv.Sum(nil)
