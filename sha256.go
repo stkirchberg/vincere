@@ -177,10 +177,16 @@ func NewHMAC(key []byte) hash.Hash {
 	if len(key) > BlockSize {
 		sum := NewSHA256()
 		sum.Write(key)
-		key = sum.Sum(nil)
+		hashedKey := sum.Sum(nil)
+		key = hashedKey
 		if d, ok := sum.(*Digest); ok {
 			d.Zero()
 		}
+		defer func() {
+			for i := range hashedKey {
+				hashedKey[i] = 0
+			}
+		}()
 	}
 	copy(h.ipad[:], key)
 	copy(h.opad[:], key)
@@ -210,6 +216,13 @@ func (h *hmacHash) Sum(in []byte) []byte {
 		innerSum[i] = 0
 	}
 	return res
+}
+
+func CheckMAC(message, messageMAC, key []byte) bool {
+	h := NewHMAC(key)
+	h.Write(message)
+	expectedMAC := h.Sum(nil)
+	return ConstantTimeCompare(expectedMAC, messageMAC) == 1
 }
 
 var _K = []uint32{
