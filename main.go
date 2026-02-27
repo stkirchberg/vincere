@@ -265,8 +265,11 @@ func main() {
 			IsEncrypted: false,
 			Color:       "#fff762",
 		}
+
 		chatHistory = append(chatHistory, welcomeMsg)
 		mu.Unlock()
+
+		addLog("SYSTEM", "Welcome message sent to "+name)
 
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_id",
