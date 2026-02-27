@@ -8,22 +8,28 @@
         .message-content {
             white-space: pre-wrap;
             word-wrap: break-word;
-            display: block;
-            margin-top: 2px;
+            display: inline; 
+            margin-left: 5px;
+        }
+        .message {
+            border-left: 3px solid;
+            padding-left: 10px;
+            margin-bottom: 8px;
         }
     </style>
 </head>
 <body style="background: #000; padding: 0; margin: 0; overflow-x: hidden; overflow-y: auto;">
     <div class="chat-box">
         {{range .Messages}}
-        <div class="message" style="border-left: 3px solid {{.Color}}; padding-left: 10px; margin-bottom: 8px;">
+        <div class="message" style="border-left-color: {{.Color}};">
             <span class="time" style="color: #666; font-size: 0.8em;">[{{.Timestamp.Format "15:04"}}]</span>
             
             {{if and .IsEncrypted (eq .Target $.Username)}}
                 <span style="color: #ff0000; font-weight: bold;">[for you] </span>
             {{end}}
             
-            <span class="user" style="color: {{.Color}}; font-weight: bold;">{{.Sender}}:</span><div class="text message-content" style="color: {{.Color}};">{{if .IsEncrypted}}{{if eq .Target $.Username}}{{.Content}}{{else}}<span style="opacity: 0.5;">[Encrypted]</span>{{end}}{{else}}{{.Content}}{{end}}</div>
+            <span class="user" style="color: {{.Color}}; font-weight: bold;">{{.Sender}}:</span>
+            <span class="text message-content" style="color: {{.Color}};">{{if .IsEncrypted}}{{if eq .Target $.Username}}{{.Content}}{{else}}<span style="opacity: 0.5;">[Encrypted]</span>{{end}}{{else}}{{.Content}}{{end}}</span>
         </div>
         {{end}}
         <div id="bottom"></div>
