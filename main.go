@@ -123,13 +123,20 @@ func main() {
 
 	http.HandleFunc("/server-logs", func(w http.ResponseWriter, r *http.Request) {
 		mu.RLock()
+
 		logsCopy := make([]string, len(serverLogs))
 		copy(logsCopy, serverLogs)
 		mu.RUnlock()
 
+		reversedLogs := make([]string, len(logsCopy))
+		for i := 0; i < len(logsCopy); i++ {
+			reversedLogs[i] = logsCopy[len(logsCopy)-1-i]
+		}
+
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprint(w, "<html><head><meta http-equiv='refresh' content='2'><style>body{background:#000;color:#0f0;font-family:monospace;font-size:12px;margin:10px;overflow-x:hidden;} .crypto{color:#f0f;} .auth{color:#0af;} .msg{color:#ff0;}</style></head><body>")
-		for _, l := range logsCopy {
+
+		for _, l := range reversedLogs {
 			class := ""
 			if myContains(l, "CRYPTO") {
 				class = "class='crypto'"
