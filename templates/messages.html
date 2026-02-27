@@ -8,7 +8,7 @@
         .message-content {
             white-space: pre-wrap;
             word-wrap: break-word;
-            display: block; 
+            display: block;
             margin-top: 2px;
         }
     </style>
@@ -23,20 +23,9 @@
                 <span style="color: #ff0000; font-weight: bold;">[for you] </span>
             {{end}}
             
-            <span class="user" style="color: {{.Color}}; font-weight: bold;">{{.Sender}}:</span>
-            
-            <div class="text message-content" style="color: {{.Color}};">
-                {{if .IsEncrypted}}
-                    {{if eq .Target $.Username}} 
-                        {{.Content}} 
-                    {{else}} 
-                        <span style="opacity: 0.5;">[Encrypted]</span> 
-                    {{end}}
-                {{else}}
-                    {{.Content}}
-                {{end}}
-            </div>
-        </div> {{end}}
+            <span class="user" style="color: {{.Color}}; font-weight: bold;">{{.Sender}}:</span><div class="text message-content" style="color: {{.Color}};">{{if .IsEncrypted}}{{if eq .Target $.Username}}{{.Content}}{{else}}<span style="opacity: 0.5;">[Encrypted]</span>{{end}}{{else}}{{.Content}}{{end}}</div>
+        </div>
+        {{end}}
         <div id="bottom"></div>
     </div>
 </body>
