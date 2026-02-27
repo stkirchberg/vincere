@@ -256,6 +256,18 @@ func main() {
 
 		addLog("AUTH", "Session created for "+name)
 
+		mu.Lock()
+		welcomeMsg := Message{
+			Sender:      "SYSTEM",
+			Target:      "all",
+			Content:     fmt.Sprintf("Hello %s!\nWelcome to vincere. \nPlease note: No CSAM. No spamming.\nCode: https://github.com/vincere-chat", name),
+			Timestamp:   time.Now(),
+			IsEncrypted: false,
+			Color:       "#fff762",
+		}
+		chatHistory = append(chatHistory, welcomeMsg)
+		mu.Unlock()
+
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_id",
 			Value:    sid,
