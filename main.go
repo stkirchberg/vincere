@@ -42,6 +42,7 @@ var (
 	mu          sync.RWMutex
 )
 
+// addLog verwendet mu.Lock(). Darf nie innerhalb eines anderen Locks aufgerufen werden!
 func addLog(category, message string) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -73,7 +74,7 @@ func decrypt(sharedSecret []byte, hexText string) string {
 func main() {
 	tmpl := template.Must(template.ParseFS(content, "templates/*.html"))
 
-	// Cleanup Routine
+	// Cleanup Routine für alte Nachrichten
 	go func() {
 		for {
 			time.Sleep(1 * time.Minute)
@@ -124,7 +125,6 @@ func main() {
 
 	http.HandleFunc("/server-logs", func(w http.ResponseWriter, r *http.Request) {
 		mu.RLock()
-
 		logsCopy := make([]string, len(serverLogs))
 		copy(logsCopy, serverLogs)
 		mu.RUnlock()
@@ -242,9 +242,7 @@ func main() {
 		}
 
 		if name == "stk" {
-			tmpl.ExecuteTemplate(w, "admin_login.html", map[string]string{
-				"Color": color,
-			})
+			tmpl.ExecuteTemplate(w, "admin_login.html", map[string]string{"Color": color})
 			return
 		}
 
@@ -252,18 +250,9 @@ func main() {
 		priv, pub := GenerateKeyPair()
 
 		mu.Lock()
-		users[name] = &User{
-			Username: name,
-			PrivKey:  priv,
-			PubKey:   pub,
-			Color:    color,
-		}
-
+		users[name] = &User{Username: name, PrivKey: priv, PubKey: pub, Color: color}
 		sessionBytes := make([]byte, 32)
-		if _, err := rand.Read(sessionBytes); err != nil {
-			mu.Unlock()
-			panic("CSPRNG failure")
-		}
+		rand.Read(sessionBytes)
 		sid := myHexEncode(sessionBytes)
 		sessions[sid] = name
 		mu.Unlock()
@@ -271,43 +260,28 @@ func main() {
 		addLog("AUTH", "Session created for "+name)
 
 		mu.Lock()
-		welcomeMsg := Message{
-			Sender:      "SYSTEM",
-			Target:      "all",
-			Content:     fmt.Sprintf("Hello %s!\nWelcome to vincere. \nPlease note: No CSAM. No spamming.\nCode: https://github.com/vincere-chat", name),
-			Timestamp:   time.Now(),
-			IsEncrypted: false,
-			Color:       "#fff762",
-		}
-
-		chatHistory = append(chatHistory, welcomeMsg)
+		chatHistory = append(chatHistory, Message{
+			Sender: "SYSTEM", Target: "all",
+			Content:   fmt.Sprintf("Hello %s!\nWelcome to vincere. \nPlease note: No CSAM. No spamming.", name),
+			Timestamp: time.Now(), IsEncrypted: false, Color: "#fff762",
+		})
 		mu.Unlock()
 
 		addLog("SYSTEM", "Welcome message sent to "+name)
 
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session_id",
-			Value:    sid,
-			Path:     "/",
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-		})
+		http.SetCookie(w, &http.Cookie{Name: "session_id", Value: sid, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode})
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
 	http.HandleFunc("/login-admin", func(w http.ResponseWriter, r *http.Request) {
 		pass := r.FormValue("password")
 		color := r.FormValue("color")
-
 		adminPassHash := "$2a$12$ajTLsLTyzkF376/Jrme28O.5GlvFMR3qEGVU4GnSE0iiOFTHO9Ka."
 
-		err := bcrypt.CompareHashAndPassword([]byte(adminPassHash), []byte(pass))
-
-		if err == nil {
+		if err := bcrypt.CompareHashAndPassword([]byte(adminPassHash), []byte(pass)); err == nil {
 			name := "stk"
 			addLog("AUTH", "Admin verification successful for: "+name)
 			priv, pub := GenerateKeyPair()
-
 			mu.Lock()
 			users[name] = &User{Username: name, PrivKey: priv, PubKey: pub, Color: color}
 			sessionBytes := make([]byte, 32)
@@ -315,10 +289,7 @@ func main() {
 			sid := myHexEncode(sessionBytes)
 			sessions[sid] = name
 			mu.Unlock()
-
-			http.SetCookie(w, &http.Cookie{
-				Name: "session_id", Value: sid, Path: "/", HttpOnly: true,
-			})
+			http.SetCookie(w, &http.Cookie{Name: "session_id", Value: sid, Path: "/", HttpOnly: true})
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 		} else {
 			addLog("AUTH", "FAILED Admin login attempt!")
@@ -350,25 +321,18 @@ func main() {
 				mu.Lock()
 				if u, exists := users[targetToShadow]; exists {
 					u.IsShadowed = true
-					addLog("ADMIN", "stk shadow-banned user: "+targetToShadow)
 				}
 				mu.Unlock()
+				addLog("ADMIN", "stk shadow-banned user: "+targetToShadow)
 				http.Redirect(w, r, "/input", http.StatusSeeOther)
 				return
 			}
 
-			msg := Message{
-				Sender:    senderName,
-				Content:   text,
-				Timestamp: time.Now(),
-				Target:    "all",
-				Color:     sender.Color,
-			}
+			msg := Message{Sender: senderName, Content: text, Timestamp: time.Now(), Target: "all", Color: sender.Color}
 
 			if myHasPrefix(text, "@") {
 				parts := mySplitN(text, " ", 2)
 				targetName := myTrimPrefix(parts[0], "@")
-
 				mu.RLock()
 				target, exists := users[targetName]
 				mu.RUnlock()
@@ -390,7 +354,6 @@ func main() {
 			var base [32]byte
 			base[0] = 9
 			proof, _ := X25519(sender.PrivKey, base)
-
 			h := hmac.New(NewSHA256, proof[:])
 			h.Write([]byte(msg.Content))
 			msg.Signature = myHexEncode(h.Sum(nil))
@@ -406,7 +369,6 @@ func main() {
 		cookie, err := r.Cookie("session_id")
 		if err == nil {
 			sid := cookie.Value
-
 			mu.Lock()
 			name, ok := sessions[sid]
 			if ok {
@@ -420,15 +382,7 @@ func main() {
 			}
 		}
 
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session_id",
-			Value:    "",
-			Path:     "/",
-			MaxAge:   -1,
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-		})
-
+		http.SetCookie(w, &http.Cookie{Name: "session_id", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 		w.Header().Set("Connection", "close")
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
