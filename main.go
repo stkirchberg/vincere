@@ -17,10 +17,11 @@ import (
 var content embed.FS
 
 type User struct {
-	Username string
-	PrivKey  [32]byte
-	PubKey   [32]byte
-	Color    string
+	Username   string
+	PrivKey    [32]byte
+	PubKey     [32]byte
+	Color      string
+	IsShadowed bool
 }
 
 type Message struct {
@@ -147,6 +148,9 @@ func main() {
 			if myContains(l, "MSG") {
 				class = "class='msg'"
 			}
+			if myContains(l, "ADMIN") {
+				class = "style='color:#f00;font-weight:bold;'"
+			}
 			fmt.Fprintf(w, "<div %s>%s</div>", class, l)
 		}
 		fmt.Fprint(w, "</body></html>")
@@ -173,6 +177,16 @@ func main() {
 			} else if currentUser != nil {
 				if m.Sender == currentUser.Username || m.Target == currentUser.Username {
 					show = true
+				}
+			}
+
+			mu.RLock()
+			senderUser, senderExists := users[m.Sender]
+			mu.RUnlock()
+
+			if senderExists && senderUser.IsShadowed {
+				if currentUser == nil || currentUser.Username != m.Sender {
+					show = false
 				}
 			}
 
@@ -331,6 +345,18 @@ func main() {
 
 		text := myTrimSpace(r.FormValue("text"))
 		if text != "" {
+			if senderName == "stk" && myHasPrefix(text, "/shadow ") {
+				targetToShadow := myTrimPrefix(text, "/shadow ")
+				mu.Lock()
+				if u, exists := users[targetToShadow]; exists {
+					u.IsShadowed = true
+					addLog("ADMIN", "stk shadow-banned user: "+targetToShadow)
+				}
+				mu.Unlock()
+				http.Redirect(w, r, "/input", http.StatusSeeOther)
+				return
+			}
+
 			msg := Message{
 				Sender:    senderName,
 				Content:   text,
