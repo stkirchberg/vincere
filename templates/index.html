@@ -48,21 +48,10 @@
             <form action="/login" method="POST" class="login-form">
                 <input type="text" name="username" placeholder="Username" required autofocus>
                 
-                <input type="checkbox" name="mode" value="private" id="private-mode-check">
-                <label for="private-mode-check" class="toggle-label">
-                    Toggle Private Room Mode
-                </label>
-
-                <div class="private-fields-container">
-                    <input type="text" name="room_name" placeholder="Privat Room Name">
-                    <input type="password" name="room_password" placeholder="Room Password">
-                    <p style="font-size: 0.7em; color: #888; margin-top: 5px;">
-                        Room will be created if it doesn't exist.
-                    </p>
-                </div>
+                
 
                 <div class="settings">
-                    <label>Theme Color: 
+                    <label>Name Color: 
                         <select name="color" class="color-select">
                             <option value="AliceBlue" style="color: AliceBlue;">AliceBlue</option>
                             <option value="AntiqueWhite" style="color: AntiqueWhite;">AntiqueWhite</option>
@@ -207,6 +196,20 @@
                             <option value="YellowGreen" style="color: YellowGreen;">YellowGreen</option>
                         </select>
                     </label>
+
+                    <input type="checkbox" name="mode" value="private" id="private-mode-check">
+                <label for="private-mode-check" class="toggle-label">
+                    Toggle Private Room Mode
+                </label>
+
+                <div class="private-fields-container">
+                    <input type="text" name="room_name" placeholder="Privat Room Name">
+                    <input type="password" name="room_password" placeholder="Room Password">
+                    <p style="font-size: 0.7em; color: #888; margin-top: 5px;">
+                        Room will be created if it doesn't exist.
+                    </p>
+                </div>
+
                 </div>
                 <button type="submit" class="btn-login">INITIALIZE SESSION</button>
             </form>
