@@ -72,6 +72,52 @@ h1 {
     background-color: #000;
 }
 
+#private-mode-check {
+    display: none;
+}
+
+.private-fields-container {
+    display: none;
+    margin-top: 15px;
+    margin-bottom: 30px;
+    padding: 15px;
+    background: rgba(0, 255, 0, 0.05);
+}
+
+#private-mode-check:checked ~ .private-fields-container {
+    display: block;
+}
+
+.toggle-label {
+    display: inline-block;
+    margin: 10px 0;
+    padding: 10px 20px;
+    background: #1a1a1a;
+    color: lime;
+    border: 1px solid lime;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+}
+
+#private-mode-check:checked ~ .toggle-label {
+    background: lime;
+    color: black;
+    content: "PRIVATE ROOM: ACTIVE";
+}
+
+.login-overlay {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    background: #000;
+    border: 1px solid #333;
+    text-align: center;
+}
+
+
 .chat-section {
     display: flex;
     flex-direction: column;

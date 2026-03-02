@@ -17,9 +17,8 @@
 
         {{if .Username}}
         <div class="main-layout">
-            
             <div class="log-panel">
-                <div class="log-header">System Backend Stream :: Verbosity: High</div>
+                <div class="log-header">System Backend Stream // Room: {{.RoomName}}</div>
                 <iframe src="/server-logs" class="log-frame"></iframe>
             </div>
 
@@ -31,19 +30,17 @@
                     <iframe src="/input" class="frame-input" scrolling="no"></iframe>
                 </div>
             </div>
-
         </div>
 
         <div class="footer">
             <div class="footer-info">
                 Logged in as: <span class="current-user" style="color: {{.UserColor}};">{{.Username}}</span>
                 <span class="separator">|</span>
-                Online: <span class="online-list">{{.OnlineUsers}}</span>
+                Room: <strong>{{.RoomName}}</strong>
+                <span class="separator">|</span>
+                Online here: <span class="online-list">{{.OnlineUsers}}</span>
             </div>
-            <a href="/logout" 
-               target="_top" 
-               onclick="window.stop();" 
-               class="logout-link">[EXIT SESSION]</a>
+            <a href="/logout" target="_top" class="logout-link">[EXIT SESSION]</a>
         </div>
 
         {{else}}
@@ -51,6 +48,19 @@
             <form action="/login" method="POST" class="login-form">
                 <input type="text" name="username" placeholder="Username" required autofocus>
                 
+                <input type="checkbox" name="mode" value="private" id="private-mode-check">
+                <label for="private-mode-check" class="toggle-label">
+                    Toggle Private Room Mode
+                </label>
+
+                <div class="private-fields-container">
+                    <input type="text" name="room_name" placeholder="Secret Room Name">
+                    <input type="password" name="room_password" placeholder="Room Password">
+                    <p style="font-size: 0.7em; color: #888; margin-top: 5px;">
+                        Room will be created if it doesn't exist.
+                    </p>
+                </div>
+
                 <div class="settings">
                     <label>Theme Color: 
                         <select name="color" class="color-select">
