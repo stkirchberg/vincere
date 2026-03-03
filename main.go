@@ -22,7 +22,7 @@ type User struct {
 	PubKey      [32]byte
 	Color       string
 	ShadowUntil time.Time
-	RoomName    string
+	ActiveRoom  string
 }
 
 type Message struct {
@@ -364,6 +364,26 @@ func main() {
 				addLog("MSG", "Public message from "+senderName)
 			}
 
+			roomName := sender.ActiveRoom
+			var targetHistory *[]Message
+			var historyMu *sync.RWMutex
+
+			if roomName != "" {
+				roomsMu.RLock()
+				r, exists := rooms[roomName]
+				roomsMu.RUnlock()
+				if exists {
+					targetHistory = &r.Messages
+					historyMu = &r.Mu
+					r.Mu.Lock()
+					r.LastActivity = time.Now()
+					r.Mu.Unlock()
+				}
+			} else {
+				targetHistory = &chatHistory
+				historyMu = &mu
+			}
+
 			var base [32]byte
 			base[0] = 9
 			proof, _ := X25519(sender.PrivKey, base)
@@ -374,6 +394,10 @@ func main() {
 			mu.Lock()
 			chatHistory = append(chatHistory, msg)
 			mu.Unlock()
+
+			historyMu.Lock()
+			*targetHistory = append(*targetHistory, msg)
+			historyMu.Unlock()
 		}
 		http.Redirect(w, r, "/input", http.StatusSeeOther)
 	})
