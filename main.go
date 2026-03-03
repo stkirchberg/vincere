@@ -22,6 +22,7 @@ type User struct {
 	PubKey      [32]byte
 	Color       string
 	ShadowUntil time.Time
+	RoomName    string
 }
 
 type Message struct {
