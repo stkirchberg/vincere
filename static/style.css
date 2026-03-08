@@ -231,6 +231,21 @@ input[type="text"]:focus, .color-select:focus {
     border-bottom: 2px solid #0f0;
 }
 
+input[type="password"], .color-select {
+    width: 100%;
+    background: #000;
+    border: 1px solid #030;
+    color: #fff;
+    padding: 12px;
+    margin-bottom: 15px;
+    font-family: monospace;
+    outline: none;
+}
+
+input[type="password"]:focus, .color-select:focus {
+    border-bottom: 2px solid #0f0;
+}
+
 .btn-login {
     width: 100%;
     background-color: #0f0;
