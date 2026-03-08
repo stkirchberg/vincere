@@ -265,7 +265,7 @@ func main() {
 
 		assignedRoom := ""
 		if roomMode == "private" && roomName != "" {
-			room, err := GetOrCreateRoom(roomName, roomPass)
+			room, err := GetOrCreateRoom(roomName, roomPass, name)
 			if err != nil {
 				addLog("AUTH", "Room Access Denied (Wrong PW): "+roomName)
 				http.Redirect(w, r, "/", http.StatusSeeOther)
