@@ -124,7 +124,7 @@ For symmetric encryption, `vincere` utilizes the AES block cipher in IGE mode. T
 
 ---
 
-### 6. Transitioning to Standard Libraries
+### Transitioning to Standard Libraries
 
 To upgrade this project to industry standards, follow these steps:
 
