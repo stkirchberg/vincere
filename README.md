@@ -109,7 +109,7 @@ In addition to the curve arithmetic, `vincere` implements the hashing and symmet
 The integrity of messages and the derivation of signatures are handled by a custom SHA-256 implementation following the Merkle-Damgård construction.
 
 * **Block Compression**: The implementation in `sha256.go` manually handles the message padding, the 64-round compression function, and the specific constant $K$ values.
-* **HMAC Authentication**: To verify message authenticity, `NewHMAC` is used. It applies the nested hashing construction ($H(K \oplus opad \parallel H(K \oplus ipad \parallel text))$) to ensure that messages cannot be tampered with.
+* **HMAC Authentication**: To verify message authenticity, `NewHMAC` is used. It applies the nested hashing construction H(K XOR opad || H(K XOR ipad || text)) to ensure that messages cannot be tampered with.
 * **Constant-Time Verification**: The `CheckMAC` function utilizes `myConstantTimeCompare` to compare the expected MAC with the received signature, mitigating timing attacks on the authentication layer.
 
 
