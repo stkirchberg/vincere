@@ -12,9 +12,20 @@
 
 ---
 
+## Live Demo (Tor Network)
+
+> [!IMPORTANT]
+> To access the live instance of **vincere**, you must use the **Tor Browser**.
+> Standard browsers (Chrome, Firefox, etc.) will not be able to resolve this address.
+
+**Onion Address:** [http://vincere3v6uwymckmwdhvjhhs2ogilqh2aejfjays74fmj4jyjufqmid.onion/](http://vincere3v6uwymckmwdhvjhhs2ogilqh2aejfjays74fmj4jyjufqmid.onion/)
+
+---
+
 ## Overview
 
 **vincere** is an advanced E2EE messaging system that prioritizes metadata protection and cryptographic transparency. By implementing its own X25519 and AES-IGE primitives in Go, it serves as a robust platform for private direct messaging and encrypted group spaces within the darknet.
+
 
 ## Features
 
