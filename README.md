@@ -134,10 +134,13 @@ To further protect user metadata, **vincere** is designed to operate as a Tor Hi
 
 ### Transitioning to Standard Libraries
 
-To upgrade this project to industry standards, follow these steps:
+To upgrade this project to industry standards and ensure production-grade security, follow these steps:
 
-1. **Replace Curve Arithmetic**: Use `golang.org/x/crypto/curve25519`.
-2. **Use Authenticated Encryption**: Replace the experimental mode with `crypto/cipher.NewGCM` for AEAD security.
+1. **Replace Curve Arithmetic**: Use the official `golang.org/x/crypto/curve25519` package for X25519 shared secret derivation.
+2. **Use Authenticated Encryption (AEAD)**: Replace the manual AES-IGE implementation with `crypto/cipher` and `crypto/aes`. Specifically, use `cipher.NewGCM` to provide both confidentiality and authenticity in one step.
+3. **Standard Hashing & HMAC**: Replace the manual SHA-256 implementation with the standard `crypto/sha256` package and use `crypto/hmac` for message authentication.
+4. **Secure Comparison**: While the custom constant-time compare is a good exercise, use `crypto/subtle.ConstantTimeCompare` for battle-tested resistance against timing attacks.
+5. **Memory Management**: For sensitive data, consider using libraries like `github.com/awnumar/memguard` to protect keys from being swapped to disk or appearing in core dumps.
 
 ---
 
