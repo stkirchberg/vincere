@@ -144,3 +144,6 @@ To upgrade this project to industry standards and ensure production-grade securi
 
 ---
 
+### More questions? 
+
+Look at the code. Dumbass. 
