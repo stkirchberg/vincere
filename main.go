@@ -33,6 +33,7 @@ type Message struct {
 	IsEncrypted bool
 	Color       string
 	Signature   string
+	IsShadowed  bool
 }
 
 var (
@@ -198,11 +199,7 @@ func main() {
 				}
 			}
 
-			mu.RLock()
-			senderUser, senderExists := users[m.Sender]
-			mu.RUnlock()
-
-			if senderExists && time.Now().Before(senderUser.ShadowUntil) {
+			if m.IsShadowed {
 				if currentUser == nil || currentUser.Username != m.Sender {
 					show = false
 				}
@@ -394,11 +391,12 @@ func main() {
 			}
 
 			msg := Message{
-				Sender:    senderName,
-				Content:   text,
-				Timestamp: time.Now(),
-				Target:    "all",
-				Color:     sender.Color,
+				Sender:     senderName,
+				Content:    text,
+				Timestamp:  time.Now(),
+				Target:     "all",
+				Color:      sender.Color,
+				IsShadowed: time.Now().Before(sender.ShadowUntil),
 			}
 
 			if myHasPrefix(text, "@") {
