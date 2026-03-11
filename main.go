@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -326,7 +327,7 @@ func main() {
 	http.HandleFunc("/login-admin", func(w http.ResponseWriter, r *http.Request) {
 		pass := r.FormValue("password")
 		color := r.FormValue("color")
-		adminPassHash := "$2a$12$ajTLsLTyzkF376/Jrme28O.5GlvFMR3qEGVU4GnSE0iiOFTHO9Ka."
+		adminPassHash := os.Getenv("ADMIN_HASH")
 
 		if err := bcrypt.CompareHashAndPassword([]byte(adminPassHash), []byte(pass)); err == nil {
 			name := "stk"

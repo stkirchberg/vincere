@@ -4,6 +4,8 @@
 *.so
 *.dylib
 
+*.env
+
 *.test
 
 vincere
