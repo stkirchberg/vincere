@@ -26,6 +26,7 @@ type User struct {
 	Color       string
 	ShadowUntil time.Time
 	ActiveRoom  string
+	LastSeen    time.Time
 }
 
 type Message struct {
@@ -109,11 +110,10 @@ func main() {
 			}
 		}
 
-		var onlineNames []string
+		var onlineList []*User
 		for _, u := range users {
-			onlineNames = append(onlineNames, u.Username)
+			onlineList = append(onlineList, u)
 		}
-		onlineString := myJoin(onlineNames, ", ")
 
 		var uname, ucol string
 		if currentUser != nil {
@@ -125,7 +125,7 @@ func main() {
 		tmpl.ExecuteTemplate(w, "index.html", map[string]interface{}{
 			"Username":    uname,
 			"UserColor":   ucol,
-			"OnlineUsers": onlineString,
+			"OnlineUsers": onlineList,
 		})
 	})
 
@@ -163,14 +163,17 @@ func main() {
 	})
 
 	http.HandleFunc("/messages", func(w http.ResponseWriter, r *http.Request) {
-		mu.RLock()
+		mu.Lock()
 		var currentUser *User
 		if cookie, err := r.Cookie("session_id"); err == nil {
 			if name, ok := sessions[cookie.Value]; ok {
 				currentUser = users[name]
+				if currentUser != nil {
+					currentUser.LastSeen = time.Now()
+				}
 			}
 		}
-		mu.RUnlock()
+		mu.Unlock()
 
 		var rawHistory []Message
 
@@ -290,6 +293,7 @@ func main() {
 			PubKey:     pub,
 			Color:      color,
 			ActiveRoom: assignedRoom,
+			LastSeen:   time.Now(),
 		}
 
 		sessionBytes := make([]byte, 32)
@@ -455,6 +459,21 @@ func main() {
 		}
 		http.Redirect(w, r, "/input", http.StatusSeeOther)
 	})
+
+	go func() {
+		for {
+			time.Sleep(30 * time.Second)
+			mu.Lock()
+			cutoff := time.Now().Add(-1 * time.Minute)
+			for name, u := range users {
+				if u.LastSeen.Before(cutoff) {
+					delete(users, name)
+					addLog("AUTH", "Timeout: "+name+" removed.")
+				}
+			}
+			mu.Unlock()
+		}
+	}()
 
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_id")
