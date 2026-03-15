@@ -310,10 +310,20 @@ func main() {
 			addLog("AUTH", "Session created for "+name+" in public chat")
 		}
 
+		var welcomeContent string
+		if assignedRoom != "" {
+			welcomeContent = fmt.Sprintf("Hello %s!\nYou are in a private room. Access only via Name+PW.\nUse @username for E2EE.\nEverything is private. No CSAM.", name)
+		} else {
+			welcomeContent = fmt.Sprintf("Hello %s!\nWelcome to vincere.\nPlease note: No CSAM. No spamming.", name)
+		}
+
 		welcomeMsg := Message{
-			Sender: "SYSTEM", Target: "all",
-			Content:   fmt.Sprintf("Hello %s!\nWelcome to vincere.\nPlease note: No CSAM. No spamming.", name),
-			Timestamp: time.Now(), IsEncrypted: false, Color: "#fff762",
+			Sender:      "SYSTEM",
+			Target:      "all",
+			Content:     welcomeContent,
+			Timestamp:   time.Now(),
+			IsEncrypted: false,
+			Color:       "#fff762",
 		}
 
 		if assignedRoom != "" {
