@@ -290,7 +290,12 @@ func main() {
 		}
 
 		if name == "stk" {
-			tmpl.ExecuteTemplate(w, "admin_login.html", map[string]string{"Color": color})
+			tmpl.ExecuteTemplate(w, "admin_login.html", map[string]string{
+				"Color":        color,
+				"RoomName":     roomName,
+				"RoomPassword": roomPass,
+				"RoomMode":     roomMode,
+			})
 			return
 		}
 
