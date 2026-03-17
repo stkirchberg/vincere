@@ -125,11 +125,15 @@ func main() {
 			}
 		}
 
-		var uname, ucol string
+		var uname, ucol, uroom string
 		if currentUser != nil {
 			uname = currentUser.Username
 			ucol = currentUser.Color
+			uroom = currentUser.ActiveRoom
+		}
 
+		if uroom == "" {
+			uroom = "Public Room"
 		}
 		mu.RUnlock()
 
@@ -137,6 +141,7 @@ func main() {
 			"Username":    uname,
 			"UserColor":   ucol,
 			"OnlineUsers": onlineList,
+			"RoomName":    uroom,
 		})
 	})
 
