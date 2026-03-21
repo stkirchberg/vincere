@@ -39,9 +39,7 @@
                 Room: <strong>{{.RoomName}}</strong>
                 <span class="separator">|</span>
                 <span class="online-list">
-                    {{range $index, $user := .OnlineUsers}}
-                        {{if $index}}, {{end}}<span style="color: {{$user.Color}};">{{$user.Username}}</span>
-                    {{end}}
+                    <iframe src="/online-frame" style="width: 300px; height: 1.2em; border: none; vertical-align: middle;" scrolling="no"></iframe>
                 </span>
             </div>
             <a href="/logout" target="_top" class="logout-link">[EXIT SESSION]</a>

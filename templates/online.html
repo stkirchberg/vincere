@@ -2,14 +2,12 @@
 <html>
 <head>
     <meta http-equiv="refresh" content="10">
-    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body { margin: 0; padding: 0; background: transparent; color: #0a0; font-family: monospace; font-size: 0.9em; overflow: hidden; }
+        .user-span { display: inline; }
+    </style>
 </head>
-<body style="background: transparent; color: #0f0; font-family: monospace;">
-    <h3>Online</h3>
-    <ul style="list-style: none; padding: 0;">
-        {{range .OnlineUsers}}
-        <li style="color: {{.Color}};">● {{.Username}}</li>
-        {{end}}
-    </ul>
+<body>
+    {{range $index, $user := .OnlineUsers}}{{if $index}}, {{end}}<span style="color: {{$user.Color}};">{{$user.Username}}</span>{{end}}
 </body>
 </html>
