@@ -408,6 +408,28 @@ func main() {
 			publicKeyStore[name] = pub
 			mu.Unlock()
 
+			adminWelcome := Message{
+				Sender:      "SYSTEM",
+				Target:      "all",
+				Content:     "The creator stk has entered the arena! \nBow to your admin!",
+				Timestamp:   time.Now(),
+				IsEncrypted: false,
+				Color:       "#fff762",
+			}
+
+			if assignedRoom != "" {
+				roomsMu.RLock()
+				r := rooms[assignedRoom]
+				roomsMu.RUnlock()
+				r.Mu.Lock()
+				r.Messages = append(r.Messages, adminWelcome)
+				r.Mu.Unlock()
+			} else {
+				mu.Lock()
+				chatHistory = append(chatHistory, adminWelcome)
+				mu.Unlock()
+			}
+
 			http.SetCookie(w, &http.Cookie{Name: "session_id", Value: sid, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode})
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 		} else {
