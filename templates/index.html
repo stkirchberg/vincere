@@ -38,13 +38,10 @@
                 <span class="separator">|</span>
                 Room: <strong>{{.RoomName}}</strong>
                 <span class="separator">|</span>
-                <span class="online-list">
-                    <iframe src="/online-frame" style="width: 300px; height: 1.2em; border: none; vertical-align: middle;" scrolling="no"></iframe>
-                </span>
+                <iframe src="/online-frame" style="width: 400px; height: 20px; border: none; background: transparent;" scrolling="no"></iframe>
             </div>
             <a href="/logout" target="_top" class="logout-link">[EXIT SESSION]</a>
         </div>
-
         {{else}}
         <div class="login-overlay">
             <form action="/login" method="POST" class="login-form">

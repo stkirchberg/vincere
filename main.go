@@ -536,7 +536,7 @@ func main() {
 		}
 	}()
 
-	http.HandleFunc("/online-status", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/online-frame", func(w http.ResponseWriter, r *http.Request) {
 		mu.RLock()
 		var currentUser *User
 		if cookie, err := r.Cookie("session_id"); err == nil {
@@ -547,14 +547,10 @@ func main() {
 
 		var onlineList []*User
 		for _, u := range users {
-			if currentUser != nil {
-				if u.ActiveRoom == currentUser.ActiveRoom {
-					onlineList = append(onlineList, u)
-				}
-			} else {
-				if u.ActiveRoom == "" {
-					onlineList = append(onlineList, u)
-				}
+			if currentUser != nil && u.ActiveRoom == currentUser.ActiveRoom {
+				onlineList = append(onlineList, u)
+			} else if currentUser == nil && u.ActiveRoom == "" {
+				onlineList = append(onlineList, u)
 			}
 		}
 		mu.RUnlock()
