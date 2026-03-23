@@ -531,7 +531,7 @@ func main() {
 					r.Messages = append(r.Messages, msg)
 					r.LastActivity = time.Now()
 					r.Mu.Unlock()
-					addLog("MSG", fmt.Sprintf("Private room: Message from %s", r.Name, senderName))
+					addLog("MSG", fmt.Sprintf("Private room: Message from %s", senderName))
 				}
 			} else {
 				mu.Lock()
